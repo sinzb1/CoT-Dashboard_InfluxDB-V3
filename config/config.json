@@ -1,0 +1,10 @@
+{
+  "socrata": {
+    "domain": "publicreporting.cftc.gov",
+    "app_token": "tKpbT4h9BQSA8E3oCkVEgjpWK",
+    "limit": 5000
+  },
+  "fred": {
+    "app_token": "09d1c34176ad541eb8dc8370dd113b69"
+  }
+}
