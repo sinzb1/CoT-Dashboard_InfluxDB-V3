@@ -26,7 +26,7 @@ client = InfluxDBClient3(host=host, token=token, database=database)
 query = """
 SELECT *
 FROM cot_data
-WHERE time >= now() - INTERVAL '10 years'
+WHERE time >= now() - INTERVAL '4 years'
 """
 
 print("Fetching data from InfluxDB v3...")

@@ -148,5 +148,9 @@ temp/
 CHANGES.md
 MIGRATION_GUIDE.md
 influxdb_v3_migration_plan.md
+
+# Local Test & Debug Scripts
+check_db.py
+local_setup_guide.md
 SETUP_GUIDE.md
 NEXT_STEPS.md

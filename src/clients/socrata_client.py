@@ -9,6 +9,7 @@ class SocrataClient:
             config = json.load(f)
 
         self.api = config["socrata"]
+        self.years_back = config.get("pipeline", {}).get("years_back", 4)
         self.client = Socrata(self.api["domain"], self.api["app_token"], timeout=600)
         self.limit = self.api["limit"]
         self.max_rows = self.api.get("max_rows", None) # remove property socrata.max_rows for full data fetching
@@ -58,7 +59,7 @@ class SocrataClient:
         ]
 
         end = date.today()
-        start = date(end.year - 10, end.month, end.day)
+        start = date(end.year - self.years_back, end.month, end.day)
 
         escaped = [v.replace("'", "''") for v in markets]
         markets_where = "market_and_exchange_names in ({})".format(
