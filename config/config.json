@@ -6,5 +6,8 @@
   },
   "fred": {
     "app_token": "09d1c34176ad541eb8dc8370dd113b69"
+  },
+  "pipeline": {
+    "years_back": 4
   }
 }
