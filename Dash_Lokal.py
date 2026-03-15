@@ -150,9 +150,6 @@ df_pivoted['MMS Short OI'] = -df_pivoted['Managed Money Short']
 df_pivoted['MML Traders'] = df_pivoted['Traders M Money Long']
 df_pivoted['MMS Traders'] = df_pivoted['Traders M Money Short']
 
-df_pivoted['MML Position Size'] = df_pivoted['Managed Money Long'] / df_pivoted['Traders M Money Long']
-df_pivoted['MMS Position Size'] = df_pivoted['Managed Money Short'] / df_pivoted['Traders M Money Short']
-
 max_bubble_size = 100
 max_oi = max(df_pivoted['MML Long OI'].max(), abs(df_pivoted['MML Short OI'].max()))
 max_oi = max(df_pivoted['MMS Short OI'].max(), abs(df_pivoted['MML Short OI'].max()))
@@ -237,6 +234,25 @@ def _ppci_get_price_col(market_name: str):
         if key in mn:
             return col
     return None
+
+
+# Kontraktgrössen
+_PPCI_CONTRACT_SIZES = {
+    'GOLD':      100,    # troy ounces
+    'SILVER':    5000,   # troy ounces
+    'PLATINUM':  50,     # troy ounces
+    'PALLADIUM': 100,    # troy ounces
+    'COPPER':    25000,  # pounds
+}
+
+
+def _ppci_get_contract_size(market_name: str) -> float:
+    """Gibt die Kontraktgröße (Einheiten/Kontrakt) zurück, oder 1 als Fallback."""
+    mn = (market_name or '').upper()
+    for key, size in _PPCI_CONTRACT_SIZES.items():
+        if key in mn:
+            return float(size)
+    return 1.0
 
 
 def get_global_xaxis():
@@ -779,6 +795,70 @@ dbc.Row([
         ),
 
         dcc.Graph(id='dry-powder-indicator-graph')
+    ], width=12)
+]),
+
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Notional Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Dry Powder Notional Indicator** misst die aggregierte Long- bzw. Short-Exponierung 
+                        einer bestimmten Tradergruppe in Notional-Dollar, indem das Open Interest der Gruppe mit der 
+                        Kontraktgrösse und dem zugrunde liegenden Futures-Preis multipliziert wird. Dadurch wird sichtbar, 
+                        wie gross das gesamte finanzielle Exposure einer Gruppe im Markt ist und wie stark sie kapitalmässig engagiert ist.
+
+                        Das **Ziel des Indikators** ist es, die absolute Markt-Exponierung einer Tradergruppe in USD sichtbar 
+                        zu machen. Er hilft zu beurteilen, ob Veränderungen im Engagement einer Gruppe primär auf eine veränderte 
+                        Anzahl Trader oder auf ein höheres bzw. tieferes aggregiertes Positionsvolumen zurückzuführen sind. 
+                        Dadurch lassen sich Rückschlüsse auf die finanzielle Bedeutung und das Marktgewicht einzelner Tradergruppen ziehen.
+
+                        **Farbskala:** Die Punktfarbe unterscheidet die jeweilige Tradergruppe. In der dargestellten Ausprägung 
+                        steht dunkelblau für Managed Money Long (MML) und hellblau für Managed Money Short (MMS).
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
+
+                        $$
+                        x_G(t) = \mathrm{Traders}_G(t)
+                        $$
+
+                        $$
+                        y_G(t) = \mathrm{DP\ Notional}_G(t)
+                        = \mathrm{Position}_G(t)\times \mathrm{ContractSize}\times \mathrm{Price}(t)
+                        $$
+
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **$G$:** betrachtete Tradergruppe, $\mathrm{MML}$ oder $\mathrm{MMS}$
+                        - **$\mathrm{Traders}_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - **$\mathrm{Position}_G(t)$:** aggregierte Position der Gruppe $G$ zum Zeitpunkt $t$ (in Kontrakten)
+                        - **$\mathrm{ContractSize}$:** Kontraktgrösse des jeweiligen Futures
+                        - **$\mathrm{Price}(t)$:** Futures-Preis zum Zeitpunkt $t$
+                        - **$\mathrm{DP\ Notional}_G(t)$:** aggregiertes Notional-Exposure der Gruppe $G$ in USD
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.Graph(id='dp-notional-indicator-graph'),
+        html.Br(),
     ], width=12)
 ]),
 
@@ -1443,31 +1523,32 @@ dbc.Row([
                     title="Beschreibung",
                 ),
 
-                dbc.AccordionItem(
-                    [
-                        dcc.Markdown(r"""
-                        **Berechnung:**
+dbc.AccordionItem(
+    [
+        dcc.Markdown(r"""
+        **Berechnung:**
 
-                        $$
-                        \mathrm{PP\ PositionSize}_{G}(t)=
-                        \frac{\mathrm{Position}_{G}(t)\times \mathrm{Price}(t)}
-                        {\mathrm{Traders}_{G}(t)}
-                        $$
-                        """, mathjax=True),
+        $$
+        \mathrm{PP\ PositionSize}_{G}(t)=
+        \frac{\mathrm{Position}_{G}(t)\times \mathrm{ContractSize}\times \mathrm{Price}(t)}
+        {\mathrm{Traders}_{G}(t)}
+        $$
+        """, mathjax=True),
 
-                        dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
-                        - **MML:** Managed Money Long
-                        - **MMS:** Managed Money Short
-                        - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
-                        - **$\mathrm{Position}_{G}(t)$:** Position der betrachteten Gruppe am Reportdatum $t$ (in Kontrakten)
-                        - **$\mathrm{Price}(t)$:** Preis des betrachteten Futures-Marktes am Reportdatum $t$
-                        - **$\mathrm{Traders}_{G}(t)$:** Anzahl Trader der betrachteten Gruppe am Reportdatum $t$
-                        - **Position Size:** durchschnittliche preisgewichtete Positionsgrösse pro Trader innerhalb der betrachteten Gruppe
-                        """, mathjax=True),
-                    ],
-                    title="Berechnung",
-                ),
+        dcc.Markdown(r"""
+        **Bedeutung der Abkürzungen / Begriffe:**
+        - **MML:** Managed Money Long
+        - **MMS:** Managed Money Short
+        - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
+        - **$\mathrm{Position}_{G}(t)$:** Position der betrachteten Gruppe am Reportdatum $t$ (in Kontrakten)
+        - **$\mathrm{ContractSize}$:** Kontraktgrösse des betrachteten Futures-Marktes
+        - **$\mathrm{Price}(t)$:** Preis des betrachteten Futures-Marktes am Reportdatum $t$
+        - **$\mathrm{Traders}_{G}(t)$:** Anzahl Trader der betrachteten Gruppe am Reportdatum $t$
+        - **Position Size:** durchschnittliche preisgewichtete Positionsgrösse pro Trader innerhalb der betrachteten Gruppe
+        """, mathjax=True),
+    ],
+    title="Berechnung",
+),
             ],
             start_collapsed=True,
             always_open=True,
@@ -3546,9 +3627,10 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
         y_vals = pd.Series([np.nan] * len(dff), index=dff.index)
         y_title = f'Price (keine Daten für {selected_market})'
 
-    # Position Size in USD = (MML/MMS Position Size in Kontrakten) × Price
+    # Position Size in USD = (MML/MMS Position Size in Kontrakten) × Kontraktgröße × Price
     price_series = y_vals.reset_index(drop=True)
     dff = dff.reset_index(drop=True)
+    contract_size = _ppci_get_contract_size(selected_market)
 
     if mm_type == 'MML':
         traders_col    = 'Traders M Money Long'
@@ -3562,7 +3644,7 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
         size_legend_title = 'Number of Short Traders'
 
     # Farbwerte: Position Size in USD
-    color_vals = pos_size_contr * price_series
+    color_vals = pos_size_contr * contract_size * price_series
 
     # Bubble-Größe = Anzahl Trader
     traders = pd.to_numeric(dff[traders_col], errors='coerce').fillna(0).abs()
@@ -3663,6 +3745,154 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
             font=dict(size=12)
         ),
         margin=dict(l=60, r=160, t=60, b=60),
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Dry Powder Notional Indicator – Callback
+# Orientierung am DP Indicator: Farben, Trendlinien, Most-Recent-Week-Marker,
+# Bubble-Sizing und Layout-Parameter werden identisch übernommen.
+# Y-Achse: Notional Exposure in USD bn = (MM OI × Kontraktgröße × Price) / 1e9
+#   MML (Long):  positiv (oberhalb Nulllinie)
+#   MMS (Short): negativ (unterhalb Nulllinie)
+# Preisquelle: df_futures_prices via _ppci_get_price_col (identisch zu PPCI).
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('dp-notional-indicator-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date')]
+)
+def update_dp_notional(selected_market, start_date, end_date):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy().reset_index(drop=True)
+
+    if dff.empty:
+        return go.Figure()
+
+    # 2nd-Nearby-Preis (identisch zu PPCI)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+    price_col = _ppci_get_price_col(selected_market)
+
+    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
+        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
+        dff = dff.sort_values('_date').reset_index(drop=True)
+        dff = pd.merge_asof(
+            dff, prices,
+            left_on='_date', right_on='_pdate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        price_series = pd.to_numeric(dff[price_col], errors='coerce')
+    else:
+        price_series = pd.Series([np.nan] * len(dff), index=dff.index)
+
+    # Notional Exposure in USD bn
+    # Formel: Kontrakte × Kontraktgröße (Einheiten/Kontrakt) × Preis (USD/Einheit) / 1e9
+    contract_size = _ppci_get_contract_size(selected_market)
+    mml_oi = pd.to_numeric(dff['Managed Money Long'],  errors='coerce')
+    mms_oi = pd.to_numeric(dff['Managed Money Short'], errors='coerce')
+
+    y_mml =  mml_oi * contract_size * price_series / 1e9   # positiv
+    y_mms = -mms_oi * contract_size * price_series / 1e9   # negativ
+
+    x_mml = pd.to_numeric(dff['MML Traders'], errors='coerce')
+    x_mms = pd.to_numeric(dff['MMS Traders'], errors='coerce')
+
+    # Bubble-Größe (identisch zu DP Indicator)
+    bubble_size = (dff['MML Long OI'].abs() + dff['MML Short OI'].abs())
+    desired_max_px = 28
+    bsmax = bubble_size.max()
+    sizeref = 2.0 * bsmax / (desired_max_px ** 2) if bsmax > 0 else 1.0
+
+    COL_LONG  = "#2c7fb8"  # MML
+    COL_SHORT = "#7fcdbb"  # MMS
+
+    fig = go.Figure()
+
+    # Wolken
+    fig.add_trace(go.Scatter(
+        x=x_mml, y=y_mml,
+        mode='markers',
+        marker=dict(
+            size=bubble_size, sizemode='area', sizeref=sizeref,
+            color=COL_LONG, opacity=0.75, line=dict(width=0.6, color='black')
+        ),
+        name='MML',
+        hovertemplate='Traders: %{x}<br>Notional: %{y:.2f} USD bn<extra>MML</extra>'
+    ))
+    fig.add_trace(go.Scatter(
+        x=x_mms, y=y_mms,
+        mode='markers',
+        marker=dict(
+            size=bubble_size, sizemode='area', sizeref=sizeref,
+            color=COL_SHORT, opacity=0.75, line=dict(width=0.6, color='black')
+        ),
+        name='MMS',
+        hovertemplate='Traders: %{x}<br>Notional: %{y:.2f} USD bn<extra>MMS</extra>'
+    ))
+
+    # Trendlinien (identisch zu DP Indicator: weißer Untergrund + Farblinie)
+    x_min = float(min(x_mml.min(), x_mms.min()))
+    x_max = float(max(x_mml.max(), x_mms.max()))
+    xs = np.array([x_min, x_max])
+
+    def _add_notional_trend(x_s, y_s, color, label):
+        mask = x_s.notna() & y_s.notna()
+        xv = x_s[mask].astype(float).values
+        yv = y_s[mask].astype(float).values
+        if len(xv) < 2:
+            return
+        m, b = np.polyfit(xv, yv, 1)
+        ys = m * xs + b
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color='white', width=7),
+            showlegend=False, hoverinfo='skip'
+        ))
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color=color, width=3),
+            name=label, showlegend=True
+        ))
+
+    _add_notional_trend(x_mml, y_mml, COL_LONG,  'MML Trend')
+    _add_notional_trend(x_mms, y_mms, COL_SHORT, 'MMS Trend')
+
+    # Most Recent Week (identisch zu DP Indicator)
+    fig.add_trace(go.Scatter(
+        x=[x_mml.iloc[-1]], y=[y_mml.iloc[-1]],
+        mode='markers',
+        marker=dict(size=desired_max_px + 4, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week', legendgroup='recent', showlegend=True
+    ))
+    fig.add_trace(go.Scatter(
+        x=[x_mms.iloc[-1]], y=[y_mms.iloc[-1]],
+        mode='markers',
+        marker=dict(size=desired_max_px + 4, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week', legendgroup='recent', showlegend=False
+    ))
+
+    fig.update_layout(
+        title='Dry Powder Notional Indicator',
+        xaxis=dict(
+            title='Number of Traders',
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        yaxis=dict(
+            title='Long and Short $ Exposure (USD bn)',
+            showgrid=True, gridcolor='LightGray', gridwidth=2,
+            zeroline=True, zerolinecolor='black', zerolinewidth=1
+        ),
+        plot_bgcolor='white',
+        legend_title='Trader Group',
         height=600,
     )
 
