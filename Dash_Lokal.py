@@ -552,576 +552,778 @@ app.layout = html.Div([
                 )
             ], width=12)
         ]),
-        html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H1("Clustering Indicator"),
 
-                dcc.Markdown(r"""
-               Der **Clustering Indicator** misst, wie viele Trader eine bestimmte Long- oder Short-Position halten, 
-               ausgedrückt als Prozentsatz aller Trader im Markt. Er ist damit ein Indikator für Marktstimmung und „Herdentrieb“.
-                
-                Das **Ziel des Indikators** ist es, das Mass an „Crowding“ in einem Markt sichtbar zu machen - also wie viele 
-                Trader sich in dieselbe Richtung positionieren. Er ist unabhangig von der Positionsgrosse und passt sich dadurch gut an
-                regulatorische Beschränkungen wie Positionslimits oder Diversifikationsauflagen an.
-                
-                **Farbskala:** Die Farbe der Punkte zeigt den *Clustering-Wert in %*. Dieser Wert zeigt, wie
-                 stark sich Trader im Verhältnis zur historischen Bandbreite (ein Jahr) in einer Long- oder Short-Position 
-                 konzentrieren. Ein hoher Wert bedeutet also, dass sich besonders viele Trader in derselben Richtung
-                 positionieren.
-                """, mathjax=True),
+       html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("Clustering Indicator"),
 
-                dbc.Row([
-                    dbc.Col(dcc.Markdown(r"""
-                **Berechnung Long-Clustering (Money Manager):**
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Clustering Indicator** misst, wie viele Trader eine bestimmte Long- oder Short-Position halten, 
+                        ausgedrückt als Prozentsatz aller Trader im Markt. Er ist damit ein Indikator für Marktstimmung und „Herdentrieb“.
 
-                $$
-                \mathrm{Clustering}^{\mathrm{(Long)}}_{\mathrm{MM}}(\%)=
-                \frac{\mathrm{Number\ of\ traders}^{\mathrm{(Long)}}_{\mathrm{MM}}}
-                {\mathrm{Total\ number\ of\ traders}}
-                $$
-                """, mathjax=True), width=12, lg=6),
+                        Das **Ziel des Indikators** ist es, das Mass an „Crowding“ in einem Markt sichtbar zu machen – also wie viele 
+                        Trader sich in dieselbe Richtung positionieren. Er ist unabhängig von der Positionsgrösse und passt sich dadurch gut an
+                        regulatorische Beschränkungen wie Positionslimits oder Diversifikationsauflagen an.
 
-                    dbc.Col(dcc.Markdown(r"""
-                **Berechnung Short-Clustering (Money Manager):**
-
-                $$
-                \mathrm{Clustering}^{\mathrm{(Short)}}_{\mathrm{MM}}(\%)=
-                \frac{\mathrm{Number\ of\ traders}^{\mathrm{(Short)}}_{\mathrm{MM}}}
-                {\mathrm{Total\ number\ of\ traders}}
-                $$
-                """, mathjax=True), width=12, lg=6),
-                ], className="mb-2"),
-
-                dcc.Markdown(r"""
-                **Bedeutung der Abkürzungen / Begriffe:**
-                - **MM:** Money Manager
-                - **Number of traders $\mathrm{MM}_{\mathrm{Long}}$:** Anzahl MM-Trader mit Long-Positionen
-                - **Number of traders $\mathrm{MM}_{\mathrm{Short}}$:** Anzahl MM-Trader mit Short-Positionen
-                - **Total number of traders:** Gesamtanzahl Trader im Markt
-                """, mathjax=True),
-
-                dcc.Graph(id='long-clustering-graph'),
-                html.Div([], style={'marginTop': '10px'}),
-                dcc.Graph(id='short-clustering-graph'),
-                html.Br(),
-            ], width=12)
-        ]),
-
-        html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H1("Position Size Indicator")
-            ], width=12)
-        ]),
-        dbc.Row([
-            dbc.Col(
-                dcc.Markdown(
-                    r"""
-                Der **Position Size Indicator** misst die durchschnittliche Grösse der Positionen einzelner Trader, 
-                indem die gesamte Positionsgrösse durch die Anzahl der beteiligten Trader geteilt wird. Dadurch wird sichtbar, 
-                wie stark die Überzeugung (*conviction*) innerhalb einer Tradergruppe ist.
-
-                Das **Ziel des Indikators** ist es, die durchschnittliche Positionsgrösse und damit die Intensität des Engagements von Tradern transparenter zu machen. 
-                Er kombiniert Daten zu *Open Interest* und *Traderanzahl*, um Rückschlüsse auf die Verteilung von Positionen entlang der Fälligkeiten 
-                (*down the curve*) zu ziehen. Zudem lassen sich über Positionslimits erkennen, wie stark Positionen konzentriert sind und welche 
-                Auswirkungen ein Abbau dieser Positionen auf Preise und Marktstruktur haben könnte.
-
-                **Farbskala:** Die Punktfarbe zeigt die *durchschnittliche Positionsgrösse* in der jeweiligen Gruppe. 
-                Helle Farben = grössere Positionen pro Trader, dunkle Farben = kleinere Positionen.
-
-                **Berechnung:**
-
-                $$
-                \text{Position Size}_{G} =
-                \frac{\text{Open Interest}_{G}}
-                {\text{Number of Traders}_{G}}
-                $$
-
-                wobei
-                $$
-                G \in \{\mathrm{MM}\text{-}L,\, \mathrm{MM}\text{-}S,\, \mathrm{PMPU}\text{-}L,\, \mathrm{PMPU}\text{-}S,\, \mathrm{SD}\text{-}L,\, \mathrm{SD}\text{-}S,\, \mathrm{OR}\text{-}L,\, \mathrm{OR}\text{-}S\}
-                $$
-
-                **Bedeutung der Abkürzungen:**
-                - **PMPU:** Producer/Merchant/Processor/User
-                - **SD:** Swap Dealer
-                - **MM:** Managed Money
-                - **OR:** Other Reportables
-                - **L:** Long Positionen
-                - **S:** Short Positionen
-                """,
-                    mathjax=True
-                ),
-        width=12)]),
-        dbc.Row([dbc.Col([html.H2("Producer/Merchant/Processor/User (PMPU)")], width=12)]),
-        dbc.Row([
-            dbc.Col([dcc.Graph(id='pmpu-long-position-size-graph')], width=12),
-            dbc.Col([dcc.Graph(id='pmpu-short-position-size-graph')], width=12),
-        ]),
-        dbc.Row([dbc.Col([html.H2("Swap Dealers")], width=12)]),
-        dbc.Row([
-            dbc.Col([dcc.Graph(id='sd-long-position-size-graph')], width=12),
-            dbc.Col([dcc.Graph(id='sd-short-position-size-graph')], width=12),
-        ]),
-        dbc.Row([dbc.Col([html.H2("Money Managers")], width=12)]),
-        dbc.Row([
-            dbc.Col([dcc.Graph(id='long-position-size-graph')], width=12),
-            dbc.Col([dcc.Graph(id='short-position-size-graph')], width=12),
-        ]),
-        dbc.Row([dbc.Col([html.H2("Other Reportables")], width=12)]),
-        dbc.Row([
-            dbc.Col([dcc.Graph(id='or-long-position-size-graph')], width=12),
-            dbc.Col([dcc.Graph(id='or-short-position-size-graph')], width=12),
-        ]),
-
-        html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H1("Dry Powder Indicator"),
-
-                dcc.Markdown(r"""
-                **Dry Powder (DP)** ist eine Methode zur Visualisierung der Positionierung in Rohstoffmärkten. 
-                Dabei wird die Grösse der Long- und Short-Positionen (*Open Interest*) mit der Anzahl der Trader 
-                in einer bestimmten Gruppe (z. B. Money Managers) in Beziehung gesetzt.
-
-                Das **Ziel der DP-Analyse** ist es, einschätzen zu können, ob bestehende Positionen noch ausgebaut werden 
-                können oder ob sie anfällig für Liquidationen sind. DP-Indikatoren werden in Diagrammen dargestellt 
-                und können direkt als Handelssignale genutzt werden, um Marktchancen und Risiken besser zu bewerten.
-
-                **Berechnung:**
-
-                Achsen (Zeitpunkt $$(t)$$):
-                - **x-Achse:** Anzahl der Trader in der jeweiligen Gruppe
-                - **y-Achse:** Grösse der offenen Positionen (Open Interest)
-
-                $$
-                x_{\mathrm{MML}}(t) = N_{\mathrm{MML}}(t), 
-                \qquad
-                x_{\mathrm{MMS}}(t) = N_{\mathrm{MMS}}(t)
-                $$
-
-                $$
-                y_{\mathrm{MML}}(t) = OI_{\mathrm{MML}}^{L}(t),
-                \qquad
-                y_{\mathrm{MMS}}(t) = OI_{\mathrm{MML}}^{S}(t)\;(\text{im Plot negativ})
-                $$
-
-                **Bubble-Grösse:**  
-                Die Fläche der Bubbles zeigt, wie gross die Gesamtposition (Long + Short) im Verhältnis ist – je grösser die Bubble, desto mehr offene Kontrakte (Open Interest) liegen vor.
-
-                **Begriffe:**  
-                - $OI$ (*Open Interest*): Anzahl offener Kontrakte (Long bzw. Short) einer Gruppe zu einem Zeitpunkt
-                - $N_{\mathrm{MML}}, N_{\mathrm{MMS}}$: Anzahl Trader (Money Manager Long bzw. Short)
-                - **Farbkodierung:** Dunkelblau = MML-Wolke (Long-Seite), Hellblau = MMS-Wolke (Short-Seite)
-                - **Schwarzer Punkt:** jeweils die **aktuellste Woche**
-                """, mathjax=True),
-
-                dcc.Graph(id='dry-powder-indicator-graph')
-            ], width=12)
-        ]),
-
-        html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H1("DP Relative Concentration Indicator"),
-                dcc.Markdown(
-                    r"""
-                Der **DP Relative Concentration Indicator** normalisiert Positionen 
-                anhand des Open Interest und stellt die Konzentration der Gruppen dar. Dadurch lassen sich verschiedene Märkte 
-                oder Gruppen innerhalb eines Marktes direkt vergleichen.
-
-                Das **Ziel des Indikators** ist es, die Positionierungsprofile von Märkten vollständig zu visualisieren und Unterschiede 
-                sichtbar zu machen – etwa zwischen verwandten Rohstoffen wie Mais und Sojabohnen oder zwischen WTI und Brent. 
-                Dadurch können Rückschlüsse auf zukünftige Marktbewegungen, Hedging-Verhalten und potenzielle Spreadausweitungen 
-                gezogen werden.
-
-                **Berechnung:**
-
-                Achsen (Zeitpunkt $(t)$):
-                - **x-Achse:** Anzahl Trader in der jeweiligen Gruppe (Long oder Short)
-                - **y-Achse:** Relative Concentration $(RC_G(t))$, d. h. die Nettopositionierung der Gruppe $(G)$ relativ zum gesamten Open Interest
-
-                $$
-                x_G(t) = N_G(t),
-                \qquad
-                y_G(t) = RC_G(t)
-                $$
-
-                mit
-
-                $$
-                RC_G(t) = 100 \cdot \sigma_G \left( \frac{L_G(t)}{OI(t)} - \frac{S_G(t)}{OI(t)} \right)
-                $$
-
-                wobei
-                $$
-                G \in \{\mathrm{MM}\text{-}L,\, \mathrm{MM}\text{-}S,\, \mathrm{PMPU}\text{-}L,\, \mathrm{PMPU}\text{-}S,\, \mathrm{SD}\text{-}L,\, \mathrm{SD}\text{-}S,\, \mathrm{OR}\text{-}L,\, \mathrm{OR}\text{-}S\}
-                $$
-
-                und  
-                - $L_G(t)$: Long Open Interest der Gruppe $G$  
-                - $S_G(t)$: Short Open Interest der Gruppe $G$  
-                - $OI(t)$: Gesamtes Open Interest zum Zeitpunkt $t$  
-                - $N_G(t)$: Anzahl Trader (Long oder Short) der Gruppe $G$  
-                - $\sigma_G = +1$ für Long-Serien (MM-L, OR-L, PMPU-L, SD-L),  
-                  $\sigma_G = -1$ für Short-Serien (MM-S, OR-S, PMPU-S, SD-S)
-
-                **Begriffe:**  
-                - $OI$ (*Open Interest*): Anzahl aller offenen Kontrakte
-                - $N_G$: Anzahl Trader in Gruppe $G$
-                - $RC_G(t)$: Relative Concentration (in Prozentpunkten) einer Gruppe
-                - **Schwarzer Punkt:** markiert den Wert der **aktuellsten Woche** je Gruppe
-                """,
-                    mathjax=True
-                ),
-                dcc.Graph(id='dp-relative-concentration-graph')
-            ], width=12)
-        ]),
-
-        html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H1("DP Seasonal Indicator"),
-
-                dcc.Markdown(r"""
-                Der **DP Seasonal Indicator** ist ein spezieller DP-Indikatoren, der saisonale Muster im Traderverhalten 
-                sichtbar macht. Dabei werden Positionen nicht nur nach Grösse und Anzahl der Trader, sondern zusätzlich 
-                nach Zeitabschnitten (z. B. Monate oder Quartale) dargestellt.
-
-                **Das Ziel dieses Indikator** ist es, saisonale Hedging-Muster oder Abweichungen davon zu erkennen. 
-                So lassen sich etwa typische Verhaltensweisen von Produzenten oder Konsumenten in bestimmten Jahreszeiten 
-                aufzeigen (z. B. stärkere Hedging-Aktivität im Winter bei Heizöl). Gleichzeitig hilt er, potenzielle 
-                Anomalien oder Unterabsicherungen zu identifizieren, die ein Risiko für Preisbewegungen darstellen könnten.
-                
-                **Berechnung:**
-
-                $$
-                x_q(t) = N_q(t), \qquad y_q(t) = RC_q(t)
-                $$
-                
-                wobei  
-                
-                - $N_q(t)$: Anzahl der Trader im Quartal $(q$) zum Zeitpunkt $(t$)
-                - $RC_q(t)$: *Relative Concentration* der Tradergruppe im Quartal $(q$).  
-                """, mathjax=True),
-
-                dcc.Graph(id='dp-seasonal-indicator-graph')
-            ], width=12)
-        ]),
-
-        html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H1("DP Net Indicator with Median"),
-
-                dcc.Markdown(r"""
-                Der **DP Net Indicator** kombiniert Informationen zu Netto-Open-Interest und Netto-Anzahl von Tradern. 
-                Dadurch lassen sich Abweichungen zwischen Positionsgrösse und Traderanzahl sichtbar machen, die Hinweise 
-                auf mögliche Wendepunkte im Markt geben können.
-
-                Das **Ziel dieses Indikators** ist es, ein klareres Bild der Netto-Positionierung zu liefern und Extremwerte 
-                besser einzuordnen. So können Situationen erkannt werden, in denen z. B. das Open Interest eine Long-Position 
-                zeigt, die Mehrheit der Trader aber Short positioniert ist. Zudem lassen sich auch Spread-Positionen analysieren, 
-                um einzuschätzen, ob diese sich in extremeren Marktphasen (z. B. Contango oder Backwardation) verstärken könnten.
-
-                **Berechnung:**
-
-                Achsen (Zeitpunkt $(t)$):
-                - **x-Achse:** Netto-Anzahl Money-Manager-Trader
-                - **y-Achse:** Netto-Open-Interest der Money Manager
-                
-                $$
-                x(t)=N^{\text{Net}}(t)=N^{\text{Long}}(t)-N^{\text{Short}}(t),
-                \qquad
-                y(t)=OI^{\text{Net}}(t)=OI^{\text{Long}}(t)-OI^{\text{Short}}(t)
-                $$
-                
-                **Medians (gestrichelte Referenzlinien):**
-                $$
-                \widetilde{N}^{\text{Net}}=\operatorname{Median}_t\!\big(N^{\text{Net}}(t)\big),
-                \qquad
-                \widetilde{OI}^{\text{Net}}=\operatorname{Median}_t\!\big(OI^{\text{Net}}(t)\big)
-                $$
-                
-                **Variablen (mit Datenbezug):**
-                - $t$: Kalenderwoche/Beobachtungszeitpunkt innerhalb des gewählten Datumsbereichs
-                - $N^{\text{Long}}(t)$: Anzahl **Long-Trader (MM)** zum Zeitpunkt $t$  
-                - $N^{\text{Short}}(t)$: Anzahl **Short-Trader (MM)** zum Zeitpunkt $t$  
-                - $N^{\text{Net}}(t)$: **Netto-Traderzahl** $=\;N^{\text{Long}}(t)-N^{\text{Short}}(t)$
-                - $OI^{\text{Long}}(t)$: **Long-Open-Interest (MM)** zum Zeitpunkt $t$  
-                - $OI^{\text{Short}}(t)$: **Short-Open-Interest (MM)** zum Zeitpunkt $t$  
-                - $OI^{\text{Net}}(t)$: **Netto-Open-Interest** $=\;OI^{\text{Long}}(t)-OI^{\text{Short}}(t)$
-                """, mathjax=True),
-
-                dcc.Graph(id='dp-net-indicators-graph')
-            ], width=12)
-        ]),
-
-        html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H1("DP Position Size Indicator"),
-
-                dcc.Markdown(r"""
-                Der **DP Position Size Indicator** verknüpft die durchschnittliche Positionsgrösse von Tradern 
-                mit der Preisentwicklung eines Rohstoffs. Dabei wird die Positionsgrösse (y-Achse) gegen die Anzahl der Trader 
-                (x-Achse) dargestellt, wobei die Farben die jeweilige Preisrange markieren.
-
-                Das **Ziel dieses Indikators** ist es, Zusammenhänge zwischen Positionsgrössen und Marktpreisen sichtbar zu machen. 
-                So lassen sich Muster erkennen, etwa dass Long-Trader bei tieferen Preisen grössere Positionen halten 
-                (stärkeres Engagement), während bei höheren Preisen die Traderzahl sinkt. Auf der Short-Seite hingegen treten 
-                oft uneinheitlichere Muster auf, was auf unterschiedliche Handelsstrategien wie Spread- oder 
-                Relative-Value-Trading hinweist.
-
-                Insgesamt hilft der Indikator, Unterschiede im Verhalten von Long- und Short-Tradern zu analysieren 
-                und Rückschlüsse auf ihre Handelsmotive (z. B. direktional vs. relative Value) zu ziehen.
-
-                **Berechnung:**
-
-                Achsen:
-                $$
-                x_g(t)=N_g(t), \qquad y_g(t)=\mathrm{PS}_g(t)
-                $$
-                - $N_g(t)$: Anzahl der Trader einer Gruppe $g$ zum Zeitpunkt $t$  
-                - $\mathrm{PS}_g(t)$: durchschnittliche Positionsgrösse je Trader einer Gruppe $g$ zum Zeitpunkt $t$
-
-                Farbcodierung:
-                $$
-                \text{color}_g(t)\;\propto\;\mathrm{OI}_g(t)
-                $$
-                - $\mathrm{OI}_g(t)$: Open Interest zum Zeitpunkt $t$, d. h. die gesamte Anzahl offener Kontrakte
-                - Die **Farbe eines Punktes** zeigt somit an, wie hoch das Open Interest in der jeweiligen Woche war 
-                  (je heller/gelber, desto höher das Open Interest)
-                """, mathjax=True),
-
-                dcc.RadioItems(
-                    id='mm-radio',
-                    options=[
-                        {'label': 'MML', 'value': 'MML'},
-                        {'label': 'MMS', 'value': 'MMS'}
+                        **Farbskala:** Die Farbe der Punkte zeigt den *Clustering-Wert in %*. Dieser Wert zeigt, wie
+                        stark sich Trader im Verhältnis zur historischen Bandbreite (ein Jahr) in einer Long- oder Short-Position 
+                        konzentrieren. Ein hoher Wert bedeutet also, dass sich besonders viele Trader in derselben Richtung
+                        positionieren.
+                        """, mathjax=True),
                     ],
-                    value='MML',
-                    className='mb-4'
+                    title="Beschreibung",
                 ),
-                dcc.Graph(id='dp-position-size-indicator')
-            ], width=12)
-        ]),
+
+                dbc.AccordionItem(
+                    [
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                            **Berechnung Long-Clustering (Money Manager):**
+
+                            $$
+                            \mathrm{Clustering}^{\mathrm{(Long)}}_{\mathrm{MM}}(\%)=
+                            \frac{\mathrm{Number\ of\ traders}^{\mathrm{(Long)}}_{\mathrm{MM}}}
+                            {\mathrm{Total\ number\ of\ traders}}
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+
+                            dbc.Col(dcc.Markdown(r"""
+                            **Berechnung Short-Clustering (Money Manager):**
+
+                            $$
+                            \mathrm{Clustering}^{\mathrm{(Short)}}_{\mathrm{MM}}(\%)=
+                            \frac{\mathrm{Number\ of\ traders}^{\mathrm{(Short)}}_{\mathrm{MM}}}
+                            {\mathrm{Total\ number\ of\ traders}}
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+                        ], className="mb-2"),
+
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **MM:** Money Manager
+                        - **Number of traders $\mathrm{MM}_{\mathrm{Long}}$:** Anzahl MM-Trader mit Long-Positionen
+                        - **Number of traders $\mathrm{MM}_{\mathrm{Short}}$:** Anzahl MM-Trader mit Short-Positionen
+                        - **Total number of traders:** Gesamtanzahl Trader im Markt
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.Graph(id='long-clustering-graph'),
+        html.Div([], style={'marginTop': '10px'}),
+        dcc.Graph(id='short-clustering-graph'),
+        html.Br(),
+    ], width=12)
+]),
 
         html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H1("DP Hedging Indicator"),
+dbc.Row([
+    dbc.Col([
+        html.H1("Position Size Indicator"),
 
-                dcc.Markdown(r"""
-                **DP Hedging Indicators** erweitern die klassische DP-Analyse, indem sie mehrere Tradergruppen 
-                gleichzeitig betrachten – typischerweise Money Manager (MM) und Produzenten/Verbraucher (PMPU). 
-                So wird sichtbar, wie viel „Dry Powder“ (Spielraum für zusätzliche Positionen) eine Gruppe im Verhältnis 
-                zu einer anderen noch hat.
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(
+                            r"""
+                            Der **Position Size Indicator** misst die durchschnittliche Grösse der Positionen einzelner Trader, 
+                            indem die gesamte Positionsgrösse durch die Anzahl der beteiligten Trader geteilt wird. Dadurch wird sichtbar, 
+                            wie stark die Überzeugung (*conviction*) innerhalb einer Tradergruppe ist.
 
-                Das Ziel dieser Indikatoren ist es, ein vollständigeres Bild der Marktpositionierung zu geben und besser 
-                einzuschätzen, ob Preise noch weiter steigen oder fallen können. Besonders die PMPU-Gruppe 
-                (Produzenten und Konsumenten) liefert wertvolle Hinweise, da deren Hedging-Verhalten oft eine starke 
-                Verbindung zur physischen Marktlage hat.
+                            Das **Ziel des Indikators** ist es, die durchschnittliche Positionsgrösse und damit die Intensität des Engagements von Tradern transparenter zu machen. 
+                            Er kombiniert Daten zu *Open Interest* und *Traderanzahl*, um Rückschlüsse auf die Verteilung von Positionen entlang der Fälligkeiten 
+                            (*down the curve*) zu ziehen. Zudem lassen sich über Positionslimits erkennen, wie stark Positionen konzentriert sind und welche 
+                            Auswirkungen ein Abbau dieser Positionen auf Preise und Marktstruktur haben könnte.
 
-                 **Berechnung:**
-
-                x-Achse (Traderzahl):
-                $$
-                x \;=\; \#\;\text{MM Trader (Long oder Short)}
-                $$
-                - Anzahl der aktiven Money Manager Trader in Long- oder Short-Positionen
-
-                y-Achse (Positionsgrösse):
-                $$
-                y \;=\; \text{MM (Long oder Short) Open Interest}
-                $$
-                - gesamtes Open Interest (offene Kontrakte) der Money Manager in Long- oder Short-Positionen
-
-                Farbcodierung (Hedging-Kraft der PMPU):
-                $$
-                \text{Color}
-                \;=\;
-                \frac{\;\text{PMPU(L/S) OI}_{\text{current}} - \min\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big)\;}
-                     {\max\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big) - \min\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big)}
-                $$
-                - normiertes Open Interest der Produzenten/Verbraucher (PMPU), 
-                  zeigt die aktuelle Position im Vergleich zu ihrem historischen Minimum und Maximum  
-                - **PMPU(L/S)** bezeichnet je nach Auswahl Long (PMPUL) oder Short (PMPUS)
-
-                **Weitere Visualisierungselemente:**
-                - **Grösse der Bubbles:** proportional zum gesamten Open Interest (Marktliquidität bzw. Marktgewicht)  
-                - **Farbe der Bubbles:** zeigt die relative Stärke/Positionierung der PMPU-Gruppe im beobachteten Zeitraum
-                """, mathjax=True),
-
-                dcc.RadioItems(
-                    id='trader-group-radio',
-                    options=[
-                        {'label': 'MML', 'value': 'MML'},
-                        {'label': 'MMS', 'value': 'MMS'}
+                            **Farbskala:** Die Punktfarbe zeigt die *durchschnittliche Positionsgrösse* in der jeweiligen Gruppe. 
+                            Helle Farben = grössere Positionen pro Trader, dunkle Farben = kleinere Positionen.
+                            """,
+                            mathjax=True
+                        ),
                     ],
-                    value='MML',
-                    className='mb-4'
+                    title="Beschreibung",
                 ),
-                dcc.Graph(id='hedging-indicator-graph')
-            ], width=12)
-        ]),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(
+                            r"""
+                            **Berechnung:**
+
+                            $$
+                            \text{Position Size}_{G} =
+                            \frac{\text{Open Interest}_{G}}
+                            {\text{Number of Traders}_{G}}
+                            $$
+
+                            wobei
+                            $$
+                            G \in \{\mathrm{MM}\text{-}L,\, \mathrm{MM}\text{-}S,\, \mathrm{PMPU}\text{-}L,\, \mathrm{PMPU}\text{-}S,\, \mathrm{SD}\text{-}L,\, \mathrm{SD}\text{-}S,\, \mathrm{OR}\text{-}L,\, \mathrm{OR}\text{-}S\}
+                            $$
+
+                            **Bedeutung der Abkürzungen:**
+                            - **PMPU:** Producer/Merchant/Processor/User
+                            - **SD:** Swap Dealer
+                            - **MM:** Managed Money
+                            - **OR:** Other Reportables
+                            - **L:** Long Positionen
+                            - **S:** Short Positionen
+                            """,
+                            mathjax=True
+                        ),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+    ], width=12)
+]),
+
+dbc.Row([dbc.Col([html.H2("Producer/Merchant/Processor/User (PMPU)")], width=12)]),
+dbc.Row([
+    dbc.Col([dcc.Graph(id='pmpu-long-position-size-graph')], width=12),
+    dbc.Col([dcc.Graph(id='pmpu-short-position-size-graph')], width=12),
+]),
+dbc.Row([dbc.Col([html.H2("Swap Dealers")], width=12)]),
+dbc.Row([
+    dbc.Col([dcc.Graph(id='sd-long-position-size-graph')], width=12),
+    dbc.Col([dcc.Graph(id='sd-short-position-size-graph')], width=12),
+]),
+dbc.Row([dbc.Col([html.H2("Money Managers")], width=12)]),
+dbc.Row([
+    dbc.Col([dcc.Graph(id='long-position-size-graph')], width=12),
+    dbc.Col([dcc.Graph(id='short-position-size-graph')], width=12),
+]),
+dbc.Row([dbc.Col([html.H2("Other Reportables")], width=12)]),
+dbc.Row([
+    dbc.Col([dcc.Graph(id='or-long-position-size-graph')], width=12),
+    dbc.Col([dcc.Graph(id='or-short-position-size-graph')], width=12),
+]),
 
         html.Hr(),  # Separator
-        dbc.Row([
-            dbc.Col([
-                html.H2("DP Concentration / Clustering Indicator"),
+dbc.Row([
+    dbc.Col([
+        html.H1("Dry Powder Indicator"),
 
-                dcc.Markdown(r"""
-                Der **DP Concentration / Clustering Indicator** kombiniert die Konzepte von Konzentration 
-                (Open Interest-Anteil) und Clustering (Anzahl Trader) in einem DP-Chart. Er zeigt, wie extrem die 
-                Positionierung einer Tradergruppe im Vergleich zu ihrer historischen Spanne ist.
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Dry Powder (DP)** ist eine Methode zur Visualisierung der Positionierung in Rohstoffmärkten. 
+                        Dabei wird die Grösse der Long- und Short-Positionen (*Open Interest*) mit der Anzahl der Trader 
+                        in einer bestimmten Gruppe (z. B. Money Managers) in Beziehung gesetzt.
 
-                Das **Ziel des Indikators** ist es, relative Handelschancen zwischen ähnlichen Märkten oder Rohstoffen 
-                aufzuzeigen, indem Positionierungsunterschiede sichtbar gemacht werden. Befinden sich z. B. beide 
-                Kennzahlen in einem Extrembereich, steigt die Wahrscheinlichkeit, dass ein Markt im Falle eines 
-                Preisschocks stärker reagiert als ein anderer.
-                
-                **Berechnung:**
-                
-                **1) Clustering je Zeitpunkt $(t)$**
-                
-                Rohanteil der Gruppe $(g)$ an allen Futures-Tradern:
-                $$
-                \mathrm{ClustShare}^{\mathrm{raw}}_g(m,t)=\frac{T_g(m,t)}{TT_F(m,t)}
-                $$
-                - Anteil der Trader der Gruppe \(g\) an der Gesamtzahl aller Futures-Trader im Markt
-                - Skaliert zwischen 0 und 1 (später normiert), unabhängig von der absoluten Traderzahl
-                
-                Rolling-Normierung (1-Jahresfenster $\mathcal{W}_{365}$):
-                $$
-                \mathrm{ClustShare}^{\mathrm{roll}}_g(m,t)=
-                \frac{\mathrm{ClustShare}^{\mathrm{raw}}_g(m,t)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)}
-                {\max_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)}\cdot100
-                $$
-                - Setzt den aktuellen Rohanteil in Relation zur eigenen 1-Jahres-Historie dieses Marktes 
-                - Ergebnis ist 0–100: 0 = historisches Jahres-Minimum, 100 = Jahres-Maximum
-                
-                Zeitliche Aggregation im Fenster $[t_0,t_1]$:
-                $$
-                \overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m)=
-                \frac{1}{|[t_0,t_1]|}\sum_{t=t_0}^{t_1}\mathrm{ClustShare}^{\mathrm{roll}}_g(m,t)
-                $$
-                - Glättet kurzfristiges Rauschen über das gewählte Analysefenster
-                - Liefert einen repräsentativen Durchschnittswert statt eines Einzelzeitpunkts
-                
-                **2) Concentration je Zeitpunkt $(t)$**
-                
-                Netto-Kontrakte (Long minus Short):
-                $$
-                \mathrm{RelConc}^{\mathrm{raw}}_g(m,t)=OI^{L}_g(m,t)-OI^{S}_g(m,t)
-                $$
-                - Misst die Richtung und Stärke der Positionierung der Gruppe $(g)$
-                - Positive Werte ⇒ Netto-Long; negative ⇒ Netto-Short
-                
-                Zeitliche Aggregation im Fenster $[t_0,t_1]$:
-                $$
-                \overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m)=
-                \frac{1}{|[t_0,t_1]|}\sum_{t=t_0}^{t_1}\mathrm{RelConc}^{\mathrm{raw}}_g(m,t)
-                $$
-                - Mittelt die Netto-Position über das Analysefenster
-                - Reduziert Ausreisser, betont die **persistente** Positionierung
-                
-                **3) Range-Normalisierung über alle Märkte (0–100)**
-                
-                Clustering – Vergleichbarkeit über Märkte:
-                $$
-                \mathrm{ClusteringRange}_g(m)=
-                \frac{\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m)-\min_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')}
-                {\max_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')-\min_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')}\cdot100
-                $$
-                - Min-Max-Scaling quer über alle Märkte für die Cluster-Kennzahl
-                - 0 = niedrigster Markt im Sample, 100 = höchster ⇒ direkt vergleichbar
-                
-                Concentration – Vergleichbarkeit über Märkte:
-                $$
-                \mathrm{ConcentrationRange}_g(m)=
-                \frac{\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m)-\min_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')}
-                {\max_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')-\min_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')}\cdot100
-                $$
-                - Min-Max-Scaling quer über alle Märkte für die Netto-Position
-                - Macht Märkte mit unterschiedlichen OI-Skalen vergleichbar auf 0–100
-                
-                **4) Punkt im Plot (für Markt $(m)$)**
-                $$
-                x_m=\mathrm{ClusteringRange}_g(m),\qquad
-                y_m=\mathrm{ConcentrationRange}_g(m)
-                $$
-                - Jeder Markt wird ein Punkt $(x_m, y_m)$ im Scatter-Plot
-                
-                **Interpretation:**
-                - **Clustering hoch ($x$ nahe 100)**: Im Vergleich zu Historie & anderen Märkten stark von Gruppe $g$ „gecrowded“
-                - **Concentration hoch ($y$ nahe 100)**: Markt zeigt (nach Zeitglättung) einen hohen Netto-Kontrakt-Überhang zugunsten der Gruppe $g$
-                - **Oben rechts** (hoch/hoch): doppelt extrem → Markt tendiert bei Schocks zu stärkeren Moves; **unten links**: unauffällig
-                """, mathjax=True),
-
-                dcc.DatePickerRange(
-                    id='concentration-clustering-date-picker-range',
-                    start_date=default_start_date,
-                    end_date=default_end_date,
-                    display_format='YYYY-MM-DD',
-                    className='mb-4'
-                ),
-                dcc.RadioItems(
-                    id='concentration-clustering-radio',
-                    options=[
-                        {'label': 'MML', 'value': 'MML'},
-                        {'label': 'MMS', 'value': 'MMS'}
+                        Das **Ziel der DP-Analyse** ist es, einschätzen zu können, ob bestehende Positionen noch ausgebaut werden 
+                        können oder ob sie anfällig für Liquidationen sind. DP-Indikatoren werden in Diagrammen dargestellt 
+                        und können direkt als Handelssignale genutzt werden, um Marktchancen und Risiken besser zu bewerten.
+                        """, mathjax=True),
                     ],
-                    value='MML',  # Default value
-                    inline=True,
-                    className='mb-4'
+                    title="Beschreibung",
                 ),
-                dcc.Graph(id='dp-concentration-clustering-graph')
-            ], width=12)
-        ]),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
+
+                        Achsen (Zeitpunkt $t$):
+                        - **x-Achse:** Anzahl der Trader in der jeweiligen Gruppe
+                        - **y-Achse:** Grösse der offenen Positionen (Open Interest)
+
+                        $$
+                        x_{\mathrm{MML}}(t) = N_{\mathrm{MML}}(t), 
+                        \qquad
+                        x_{\mathrm{MMS}}(t) = N_{\mathrm{MMS}}(t)
+                        $$
+
+                        $$
+                        y_{\mathrm{MML}}(t) = OI_{\mathrm{MML}}^{L}(t),
+                        \qquad
+                        y_{\mathrm{MMS}}(t) = OI_{\mathrm{MMS}}^{S}(t)\;(\text{im Plot negativ})
+                        $$
+
+                        **Bubble-Grösse:**  
+                        Die Fläche der Bubbles zeigt, wie gross die Gesamtposition (Long + Short) im Verhältnis ist – je grösser die Bubble, desto mehr offene Kontrakte (Open Interest) liegen vor.
+
+                        **Begriffe:**  
+                        - $OI$ (*Open Interest*): Anzahl offener Kontrakte (Long bzw. Short) einer Gruppe zu einem Zeitpunkt
+                        - $N_{\mathrm{MML}}, N_{\mathrm{MMS}}$: Anzahl Trader (Money Manager Long bzw. Short)
+                        - **Farbkodierung:** Dunkelblau = MML-Wolke (Long-Seite), Hellblau = MMS-Wolke (Short-Seite)
+                        - **Schwarzer Punkt:** jeweils die **aktuellste Woche**
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.Graph(id='dry-powder-indicator-graph')
+    ], width=12)
+]),
+
+        html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Relative Concentration Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(
+                            r"""
+                            Der **DP Relative Concentration Indicator** normalisiert Positionen 
+                            anhand des Open Interest und stellt die Konzentration der Gruppen dar. Dadurch lassen sich verschiedene Märkte 
+                            oder Gruppen innerhalb eines Marktes direkt vergleichen.
+
+                            Das **Ziel des Indikators** ist es, die Positionierungsprofile von Märkten vollständig zu visualisieren und Unterschiede 
+                            sichtbar zu machen – etwa zwischen verwandten Rohstoffen wie Mais und Sojabohnen oder zwischen WTI und Brent. 
+                            Dadurch können Rückschlüsse auf zukünftige Marktbewegungen, Hedging-Verhalten und potenzielle Spreadausweitungen 
+                            gezogen werden.
+                            """,
+                            mathjax=True
+                        ),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(
+                            r"""
+                            **Berechnung:**
+
+                            Achsen (Zeitpunkt $(t)$):
+                            - **x-Achse:** Anzahl Trader in der jeweiligen Gruppe (Long oder Short)
+                            - **y-Achse:** Relative Concentration $(RC_G(t))$, d. h. die Nettopositionierung der Gruppe $(G)$ relativ zum gesamten Open Interest
+
+                            $$
+                            x_G(t) = N_G(t),
+                            \qquad
+                            y_G(t) = RC_G(t)
+                            $$
+
+                            mit
+
+                            $$
+                            RC_G(t) = 100 \cdot \sigma_G \left( \frac{L_G(t)}{OI(t)} - \frac{S_G(t)}{OI(t)} \right)
+                            $$
+
+                            wobei
+                            $$
+                            G \in \{\mathrm{MM}\text{-}L,\, \mathrm{MM}\text{-}S,\, \mathrm{PMPU}\text{-}L,\, \mathrm{PMPU}\text{-}S,\, \mathrm{SD}\text{-}L,\, \mathrm{SD}\text{-}S,\, \mathrm{OR}\text{-}L,\, \mathrm{OR}\text{-}S\}
+                            $$
+
+                            und  
+                            - $L_G(t)$: Long Open Interest der Gruppe $G$  
+                            - $S_G(t)$: Short Open Interest der Gruppe $G$  
+                            - $OI(t)$: Gesamtes Open Interest zum Zeitpunkt $t$  
+                            - $N_G(t)$: Anzahl Trader (Long oder Short) der Gruppe $G$  
+                            - $\sigma_G = +1$ für Long-Serien (MM-L, OR-L, PMPU-L, SD-L)  
+                            - $\sigma_G = -1$ für Short-Serien (MM-S, OR-S, PMPU-S, SD-S)
+
+                            **Begriffe:**  
+                            - $OI$ (*Open Interest*): Anzahl aller offenen Kontrakte
+                            - $N_G$: Anzahl Trader in Gruppe $G$
+                            - $RC_G(t)$: Relative Concentration (in Prozentpunkten) einer Gruppe
+                            - **Schwarzer Punkt:** markiert den Wert der **aktuellsten Woche** je Gruppe
+                            """,
+                            mathjax=True
+                        ),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.Graph(id='dp-relative-concentration-graph')
+    ], width=12)
+]),
+
+        html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Seasonal Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **DP Seasonal Indicator** ist ein spezieller DP-Indikator, der saisonale Muster im Traderverhalten 
+                        sichtbar macht. Dabei werden Positionen nicht nur nach Grösse und Anzahl der Trader, sondern zusätzlich 
+                        nach Zeitabschnitten (z. B. Monate oder Quartale) dargestellt.
+
+                        **Das Ziel dieses Indikators** ist es, saisonale Hedging-Muster oder Abweichungen davon zu erkennen. 
+                        So lassen sich etwa typische Verhaltensweisen von Produzenten oder Konsumenten in bestimmten Jahreszeiten 
+                        aufzeigen (z. B. stärkere Hedging-Aktivität im Winter bei Heizöl). Gleichzeitig hilft er, potenzielle 
+                        Anomalien oder Unterabsicherungen zu identifizieren, die ein Risiko für Preisbewegungen darstellen könnten.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
+
+                        $$
+                        x_q(t) = N_q(t), \qquad y_q(t) = RC_q(t)
+                        $$
+
+                        wobei
+
+                        - $N_q(t)$: Anzahl der Trader im Quartal $q$ zum Zeitpunkt $t$
+                        - $RC_q(t)$: *Relative Concentration* der Tradergruppe im Quartal $q$
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.Graph(id='dp-seasonal-indicator-graph')
+    ], width=12)
+]),
+
+        html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Net Indicator with Median"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **DP Net Indicator** kombiniert Informationen zu Netto-Open-Interest und Netto-Anzahl von Tradern. 
+                        Dadurch lassen sich Abweichungen zwischen Positionsgrösse und Traderanzahl sichtbar machen, die Hinweise 
+                        auf mögliche Wendepunkte im Markt geben können.
+
+                        Das **Ziel dieses Indikators** ist es, ein klareres Bild der Netto-Positionierung zu liefern und Extremwerte 
+                        besser einzuordnen. So können Situationen erkannt werden, in denen z. B. das Open Interest eine Long-Position 
+                        zeigt, die Mehrheit der Trader aber Short positioniert ist. Zudem lassen sich auch Spread-Positionen analysieren, 
+                        um einzuschätzen, ob diese sich in extremeren Marktphasen (z. B. Contango oder Backwardation) verstärken könnten.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
+
+                        Achsen (Zeitpunkt $(t)$):
+                        - **x-Achse:** Netto-Anzahl Money-Manager-Trader
+                        - **y-Achse:** Netto-Open-Interest der Money Manager
+                        
+                        $$
+                        x(t)=N^{\text{Net}}(t)=N^{\text{Long}}(t)-N^{\text{Short}}(t),
+                        \qquad
+                        y(t)=OI^{\text{Net}}(t)=OI^{\text{Long}}(t)-OI^{\text{Short}}(t)
+                        $$
+                        
+                        **Medians (gestrichelte Referenzlinien):**
+                        $$
+                        \widetilde{N}^{\text{Net}}=\operatorname{Median}_t\!\big(N^{\text{Net}}(t)\big),
+                        \qquad
+                        \widetilde{OI}^{\text{Net}}=\operatorname{Median}_t\!\big(OI^{\text{Net}}(t)\big)
+                        $$
+                        
+                        **Variablen (mit Datenbezug):**
+                        - $t$: Kalenderwoche/Beobachtungszeitpunkt innerhalb des gewählten Datumsbereichs
+                        - $N^{\text{Long}}(t)$: Anzahl **Long-Trader (MM)** zum Zeitpunkt $t$
+                        - $N^{\text{Short}}(t)$: Anzahl **Short-Trader (MM)** zum Zeitpunkt $t$
+                        - $N^{\text{Net}}(t)$: **Netto-Traderzahl** $=\;N^{\text{Long}}(t)-N^{\text{Short}}(t)$
+                        - $OI^{\text{Long}}(t)$: **Long-Open-Interest (MM)** zum Zeitpunkt $t$
+                        - $OI^{\text{Short}}(t)$: **Short-Open-Interest (MM)** zum Zeitpunkt $t$
+                        - $OI^{\text{Net}}(t)$: **Netto-Open-Interest** $=\;OI^{\text{Long}}(t)-OI^{\text{Short}}(t)$
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.Graph(id='dp-net-indicators-graph')
+    ], width=12)
+]),
+
+        html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Position Size Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **DP Position Size Indicator** verknüpft die durchschnittliche Positionsgrösse von Tradern 
+                        mit der Preisentwicklung eines Rohstoffs. Dabei wird die Positionsgrösse (y-Achse) gegen die Anzahl der Trader 
+                        (x-Achse) dargestellt, wobei die Farben die jeweilige Preisrange markieren.
+
+                        Das **Ziel dieses Indikators** ist es, Zusammenhänge zwischen Positionsgrössen und Marktpreisen sichtbar zu machen. 
+                        So lassen sich Muster erkennen, etwa dass Long-Trader bei tieferen Preisen grössere Positionen halten 
+                        (stärkeres Engagement), während bei höheren Preisen die Traderzahl sinkt. Auf der Short-Seite hingegen treten 
+                        oft uneinheitlichere Muster auf, was auf unterschiedliche Handelsstrategien wie Spread- oder 
+                        Relative-Value-Trading hinweist.
+
+                        Insgesamt hilft der Indikator, Unterschiede im Verhalten von Long- und Short-Tradern zu analysieren 
+                        und Rückschlüsse auf ihre Handelsmotive (z. B. direktional vs. relative Value) zu ziehen.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
+
+                        Achsen:
+                        $$
+                        x_g(t)=N_g(t), \qquad y_g(t)=\mathrm{PS}_g(t)
+                        $$
+                        - $N_g(t)$: Anzahl der Trader einer Gruppe $g$ zum Zeitpunkt $t$
+                        - $\mathrm{PS}_g(t)$: durchschnittliche Positionsgrösse je Trader einer Gruppe $g$ zum Zeitpunkt $t$
+
+                        Farbcodierung:
+                        $$
+                        \text{color}_g(t)\;\propto\;\mathrm{OI}_g(t)
+                        $$
+                        - $\mathrm{OI}_g(t)$: Open Interest zum Zeitpunkt $t$, d. h. die gesamte Anzahl offener Kontrakte
+                        - Die **Farbe eines Punktes** zeigt somit an, wie hoch das Open Interest in der jeweiligen Woche war
+                          (je heller/gelber, desto höher das Open Interest)
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.RadioItems(
+            id='mm-radio',
+            options=[
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'}
+            ],
+            value='MML',
+            className='mb-4'
+        ),
+        dcc.Graph(id='dp-position-size-indicator')
+    ], width=12)
+]),
+
+        html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Hedging Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **DP Hedging Indicators** erweitern die klassische DP-Analyse, indem sie mehrere Tradergruppen 
+                        gleichzeitig betrachten – typischerweise Money Manager (MM) und Produzenten/Verbraucher (PMPU). 
+                        So wird sichtbar, wie viel „Dry Powder“ (Spielraum für zusätzliche Positionen) eine Gruppe im Verhältnis 
+                        zu einer anderen noch hat.
+
+                        Das **Ziel dieser Indikatoren** ist es, ein vollständigeres Bild der Marktpositionierung zu geben und besser 
+                        einzuschätzen, ob Preise noch weiter steigen oder fallen können. Besonders die PMPU-Gruppe 
+                        (Produzenten und Konsumenten) liefert wertvolle Hinweise, da deren Hedging-Verhalten oft eine starke 
+                        Verbindung zur physischen Marktlage hat.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
+
+                        x-Achse (Traderzahl):
+                        $$
+                        x \;=\; \#\;\text{MM Trader (Long oder Short)}
+                        $$
+                        - Anzahl der aktiven Money Manager Trader in Long- oder Short-Positionen
+
+                        y-Achse (Positionsgrösse):
+                        $$
+                        y \;=\; \text{MM (Long oder Short) Open Interest}
+                        $$
+                        - gesamtes Open Interest (offene Kontrakte) der Money Manager in Long- oder Short-Positionen
+
+                        Farbcodierung (Hedging-Kraft der PMPU):
+                        $$
+                        \text{Color}
+                        \;=\;
+                        \frac{\;\text{PMPU(L/S) OI}_{\text{current}} - \min\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big)\;}
+                             {\max\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big) - \min\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big)}
+                        $$
+                        - normiertes Open Interest der Produzenten/Verbraucher (PMPU), 
+                          zeigt die aktuelle Position im Vergleich zu ihrem historischen Minimum und Maximum  
+                        - **PMPU(L/S)** bezeichnet je nach Auswahl Long (PMPUL) oder Short (PMPUS)
+
+                        **Weitere Visualisierungselemente:**
+                        - **Grösse der Bubbles:** proportional zum gesamten Open Interest (Marktliquidität bzw. Marktgewicht)
+                        - **Farbe der Bubbles:** zeigt die relative Stärke/Positionierung der PMPU-Gruppe im beobachteten Zeitraum
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.RadioItems(
+            id='trader-group-radio',
+            options=[
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'}
+            ],
+            value='MML',
+            className='mb-4'
+        ),
+        dcc.Graph(id='hedging-indicator-graph')
+    ], width=12)
+]),
 
 html.Hr(),  # Separator
 dbc.Row([
     dbc.Col([
-        html.H1("Positioning Price Concentration Indicator"),
+        html.H2("DP Concentration / Clustering Indicator"),
 
-        dcc.Markdown(r"""
-        Der **Positioning Price Concentration Indicator** misst, wie gross der Anteil der Positionen 
-        einer Tradergruppe am gesamten Markt ist. Dadurch wird sichtbar, wie stark eine Gruppe auf 
-        der Long- oder Short-Seite im Verhältnis zum gesamten Open Interest vertreten ist. Eine hohe 
-        Konzentration deutet darauf hin, dass ein grosser Teil des Marktes von dieser Gruppe gehalten wird.
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **DP Concentration / Clustering Indicator** kombiniert die Konzepte von Konzentration 
+                        (Open Interest-Anteil) und Clustering (Anzahl Trader) in einem DP-Chart. Er zeigt, wie extrem die 
+                        Positionierung einer Tradergruppe im Vergleich zu ihrer historischen Spanne ist.
 
-        Das **Ziel des Indikators** ist es, die Marktbedeutung und Dominanz einer Tradergruppe sichtbar 
-        zu machen. Er zeigt, wie stark die Positionierung einer Gruppe relativ zum Gesamtmarkt ausfällt 
-        und hilft damit, Phasen hoher Konzentration zu erkennen. Dadurch lassen sich Rückschlüsse darauf 
-        ziehen, in welchen Marktphasen einzelne Gruppen besonders stark engagiert sind und wo potenzielle 
-        Risiken durch einen späteren Positionsabbau bestehen könnten.
+                        Das **Ziel des Indikators** ist es, relative Handelschancen zwischen ähnlichen Märkten oder Rohstoffen 
+                        aufzuzeigen, indem Positionierungsunterschiede sichtbar gemacht werden. Befinden sich z. B. beide 
+                        Kennzahlen in einem Extrembereich, steigt die Wahrscheinlichkeit, dass ein Markt im Falle eines 
+                        Preisschocks stärker reagiert als ein anderer.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
 
-        **Farbskala:** Die Punktfarbe zeigt die Konzentration der Positionen der jeweiligen Gruppe am 
-        gesamten Open Interest.
-        """, mathjax=True),
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
 
-        dbc.Row([
-            dbc.Col(dcc.Markdown(r"""
-            **Berechnung:**
+                        **1) Clustering je Zeitpunkt $(t)$**
 
-            $$
-            \mathrm{PP\ Concentration}_{G}(t)=
-            \frac{\mathrm{Position}_{G}(t)}
-            {\mathrm{OI}(t)} \times 100
-            $$
-            """, mathjax=True), width=12),
-        ], className="mb-2"),
+                        Rohanteil der Gruppe $(g)$ an allen Futures-Tradern:
+                        $$
+                        \mathrm{ClustShare}^{\mathrm{raw}}_g(m,t)=\frac{T_g(m,t)}{TT_F(m,t)}
+                        $$
+                        - Anteil der Trader der Gruppe \(g\) an der Gesamtzahl aller Futures-Trader im Markt
+                        - Skaliert zwischen 0 und 1 (später normiert), unabhängig von der absoluten Traderzahl
 
-        dcc.Markdown(r"""
-        **Bedeutung der Abkürzungen / Begriffe:**
-        - **MML:** Managed Money Long
-        - **MMS:** Managed Money Short
-        - **OI / Open Interest:** Gesamtzahl aller offenen Kontrakte im Markt
-        - **$\mathrm{Position}_{G}(t)$:** Position der betrachteten Gruppe am Reportdatum $t$, mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
-        - **Concentration:** Anteil der Positionen einer Gruppe am gesamten Markt-OI
-        """, mathjax=True),
+                        Rolling-Normierung (1-Jahresfenster $\mathcal{W}_{365}$):
+                        $$
+                        \mathrm{ClustShare}^{\mathrm{roll}}_g(m,t)=
+                        \frac{\mathrm{ClustShare}^{\mathrm{raw}}_g(m,t)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)}
+                        {\max_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)}\cdot100
+                        $$
+                        - Setzt den aktuellen Rohanteil in Relation zur eigenen 1-Jahres-Historie dieses Marktes
+                        - Ergebnis ist 0–100: 0 = historisches Jahres-Minimum, 100 = Jahres-Maximum
+
+                        Zeitliche Aggregation im Fenster $[t_0,t_1]$:
+                        $$
+                        \overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m)=
+                        \frac{1}{|[t_0,t_1]|}\sum_{t=t_0}^{t_1}\mathrm{ClustShare}^{\mathrm{roll}}_g(m,t)
+                        $$
+                        - Glättet kurzfristiges Rauschen über das gewählte Analysefenster
+                        - Liefert einen repräsentativen Durchschnittswert statt eines Einzelzeitpunkts
+
+                        **2) Concentration je Zeitpunkt $(t)$**
+
+                        Netto-Kontrakte (Long minus Short):
+                        $$
+                        \mathrm{RelConc}^{\mathrm{raw}}_g(m,t)=OI^{L}_g(m,t)-OI^{S}_g(m,t)
+                        $$
+                        - Misst die Richtung und Stärke der Positionierung der Gruppe $(g)$
+                        - Positive Werte ⇒ Netto-Long; negative ⇒ Netto-Short
+
+                        Zeitliche Aggregation im Fenster $[t_0,t_1]$:
+                        $$
+                        \overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m)=
+                        \frac{1}{|[t_0,t_1]|}\sum_{t=t_0}^{t_1}\mathrm{RelConc}^{\mathrm{raw}}_g(m,t)
+                        $$
+                        - Mittelt die Netto-Position über das Analysefenster
+                        - Reduziert Ausreisser, betont die **persistente** Positionierung
+
+                        **3) Range-Normalisierung über alle Märkte (0–100)**
+
+                        Clustering – Vergleichbarkeit über Märkte:
+                        $$
+                        \mathrm{ClusteringRange}_g(m)=
+                        \frac{\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m)-\min_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')}
+                        {\max_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')-\min_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')}\cdot100
+                        $$
+                        - Min-Max-Scaling quer über alle Märkte für die Cluster-Kennzahl
+                        - 0 = niedrigster Markt im Sample, 100 = höchster ⇒ direkt vergleichbar
+
+                        Concentration – Vergleichbarkeit über Märkte:
+                        $$
+                        \mathrm{ConcentrationRange}_g(m)=
+                        \frac{\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m)-\min_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')}
+                        {\max_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')-\min_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')}\cdot100
+                        $$
+                        - Min-Max-Scaling quer über alle Märkte für die Netto-Position
+                        - Macht Märkte mit unterschiedlichen OI-Skalen vergleichbar auf 0–100
+
+                        **4) Punkt im Plot (für Markt $(m)$)**
+                        $$
+                        x_m=\mathrm{ClusteringRange}_g(m),\qquad
+                        y_m=\mathrm{ConcentrationRange}_g(m)
+                        $$
+                        - Jeder Markt wird ein Punkt $(x_m, y_m)$ im Scatter-Plot
+
+                        **Interpretation:**
+                        - **Clustering hoch ($x$ nahe 100)**: Im Vergleich zu Historie & anderen Märkten stark von Gruppe $g$ „gecrowded“
+                        - **Concentration hoch ($y$ nahe 100)**: Markt zeigt (nach Zeitglättung) einen hohen Netto-Kontrakt-Überhang zugunsten der Gruppe $g$
+                        - **Oben rechts** (hoch/hoch): doppelt extrem → Markt tendiert bei Schocks zu stärkeren Moves; **unten links**: unauffällig
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.DatePickerRange(
+            id='concentration-clustering-date-picker-range',
+            start_date=default_start_date,
+            end_date=default_end_date,
+            display_format='YYYY-MM-DD',
+            className='mb-4'
+        ),
+        dcc.RadioItems(
+            id='concentration-clustering-radio',
+            options=[
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'}
+            ],
+            value='MML',
+            inline=True,
+            className='mb-4'
+        ),
+        dcc.Graph(id='dp-concentration-clustering-graph')
+    ], width=12)
+]),
+
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("PP Concentration Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Positioning Price Concentration Indicator** misst, wie gross der Anteil der Positionen 
+                        einer Tradergruppe am gesamten Markt ist. Dadurch wird sichtbar, wie stark eine Gruppe auf 
+                        der Long- oder Short-Seite im Verhältnis zum gesamten Open Interest vertreten ist. Eine hohe 
+                        Konzentration deutet darauf hin, dass ein grosser Teil des Marktes von dieser Gruppe gehalten wird.
+
+                        Das **Ziel des Indikators** ist es, die Marktbedeutung und Dominanz einer Tradergruppe sichtbar 
+                        zu machen. Er zeigt, wie stark die Positionierung einer Gruppe relativ zum Gesamtmarkt ausfällt 
+                        und hilft damit, Phasen hoher Konzentration zu erkennen. Dadurch lassen sich Rückschlüsse darauf 
+                        ziehen, in welchen Marktphasen einzelne Gruppen besonders stark engagiert sind und wo potenzielle 
+                        Risiken durch einen späteren Positionsabbau bestehen könnten.
+
+                        **Farbskala:** Die Punktfarbe zeigt die Konzentration der Positionen der jeweiligen Gruppe am 
+                        gesamten Open Interest.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
+
+                        $$
+                        \mathrm{PP\ Concentration}_{G}(t)=
+                        \frac{\mathrm{Position}_{G}(t)}
+                        {\mathrm{OI}(t)} \times 100
+                        $$
+                        """, mathjax=True),
+
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **OI / Open Interest:** Gesamtzahl aller offenen Kontrakte im Markt
+                        - **$\mathrm{Position}_{G}(t)$:** Position der betrachteten Gruppe am Reportdatum $t$, mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
+                        - **Concentration:** Anteil der Positionen einer Gruppe am gesamten Markt-OI
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
 
         dcc.RadioItems(
             id='ppci-mm-radio',
@@ -1141,44 +1343,60 @@ dbc.Row([
         html.Hr(),  # Separator
 dbc.Row([
     dbc.Col([
-        html.H1("Positioning Price Clustering Indicator"),
+        html.H1("PP Clustering Indicator"),
 
-        dcc.Markdown(r"""
-        Der **Positioning Price Clustering Indicator** misst, wie gross der Anteil der Trader 
-        einer bestimmten Tradergruppe an allen Long- bzw. Short-Tradern im Markt ist. Dadurch 
-        wird sichtbar, wie breit oder eng eine Positionierung innerhalb einer Gruppe abgestützt ist. 
-        Eine hohe Clustering-Ausprägung bedeutet, dass ein grosser Anteil der Marktteilnehmenden 
-        auf der jeweiligen Marktseite dieser Gruppe zuzuordnen ist.
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Positioning Price Clustering Indicator** misst, wie gross der Anteil der Trader 
+                        einer bestimmten Tradergruppe an allen Long- bzw. Short-Tradern im Markt ist. Dadurch 
+                        wird sichtbar, wie breit oder eng eine Positionierung innerhalb einer Gruppe abgestützt ist. 
+                        Eine hohe Clustering-Ausprägung bedeutet, dass ein grosser Anteil der Marktteilnehmenden 
+                        auf der jeweiligen Marktseite dieser Gruppe zuzuordnen ist.
 
-        Das **Ziel des Indikators** ist es, die Breite der Marktteilnahme einer Tradergruppe sichtbar 
-        zu machen. Er zeigt, ob eine Positionierung von vielen oder nur von wenigen Tradern getragen 
-        wird und macht damit die Struktur der Marktteilnahme transparenter. Dadurch lassen sich Phasen 
-        erkennen, in denen sich Positionierungen innerhalb einer Gruppe besonders stark verdichten oder verbreitern.
+                        Das **Ziel des Indikators** ist es, die Breite der Marktteilnahme einer Tradergruppe sichtbar 
+                        zu machen. Er zeigt, ob eine Positionierung von vielen oder nur von wenigen Tradern getragen 
+                        wird und macht damit die Struktur der Marktteilnahme transparenter. Dadurch lassen sich Phasen 
+                        erkennen, in denen sich Positionierungen innerhalb einer Gruppe besonders stark verdichten oder verbreitern.
 
-        **Farbskala:** Die Punktfarbe zeigt das Clustering der jeweiligen Gruppe.
-        """, mathjax=True),
+                        **Farbskala:** Die Punktfarbe zeigt das Clustering der jeweiligen Gruppe.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
 
-        dbc.Row([
-            dbc.Col(dcc.Markdown(r"""
-            **Berechnung:**
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
 
-            $$
-            \mathrm{PP\ Clustering}_{G}(t)=
-            \frac{\mathrm{Traders}_{G}(t)}
-            {\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)} \times 100
-            $$
-            """, mathjax=True), width=12),
-        ], className="mb-2"),
+                        $$
+                        \mathrm{PP\ Clustering}_{G}(t)=
+                        \frac{\mathrm{Traders}_{G}(t)}
+                        {\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)} \times 100
+                        $$
+                        """, mathjax=True),
 
-        dcc.Markdown(r"""
-        **Bedeutung der Abkürzungen / Begriffe:**
-        - **MML:** Managed Money Long
-        - **MMS:** Managed Money Short
-        - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
-        - **$\mathrm{Traders}_{G}(t)$:** Anzahl Trader der betrachteten Gruppe am Reportdatum $t$
-        - **$\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)$:** Gesamtzahl aller Trader derselben Marktseite (Long oder Short) am Reportdatum $t$
-        - **Clustering:** Anteil der Trader einer Gruppe an allen Tradern derselben Marktseite
-        """, mathjax=True),
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
+                        - **$\mathrm{Traders}_{G}(t)$:** Anzahl Trader der betrachteten Gruppe am Reportdatum $t$
+                        - **$\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)$:** Gesamtzahl aller Trader derselben Marktseite (Long oder Short) am Reportdatum $t$
+                        - **Clustering:** Anteil der Trader einer Gruppe an allen Tradern derselben Marktseite
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
 
         dcc.RadioItems(
             id='ppci-clustering-radio',
@@ -1191,6 +1409,83 @@ dbc.Row([
         ),
 
         dcc.Graph(id='pp-clustering-graph'),
+        html.Br(),
+    ], width=12)
+]),
+
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("PP Position Size Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Positioning Price Position Size Indicator** misst die durchschnittliche Grösse 
+                        der Positionen einzelner Trader innerhalb einer bestimmten Tradergruppe. Dazu wird die 
+                        Position der betrachteten Gruppe mit dem Preis multipliziert und durch die Anzahl der 
+                        Trader dieser Gruppe geteilt. Dadurch wird sichtbar, wie gross die durchschnittliche 
+                        preisgewichtete Position pro Trader ist und wie stark einzelne Marktteilnehmende innerhalb 
+                        der Gruppe engagiert sind.
+
+                        Das **Ziel des Indikators** ist es, die durchschnittliche Positionsgrösse pro Trader und 
+                        damit die Intensität des Engagements innerhalb einer Tradergruppe sichtbar zu machen. Er 
+                        hilft zu beurteilen, ob Veränderungen im Open Interest eher durch eine steigende Zahl von 
+                        Tradern oder durch grössere durchschnittliche Positionen pro Trader entstehen. Dadurch 
+                        lassen sich Rückschlüsse auf die Stärke und Überzeugung der Marktteilnehmenden innerhalb 
+                        einer Gruppe ziehen.
+
+                        **Farbskala:** Die Punktfarbe zeigt die durchschnittliche Positionsgrösse der jeweiligen Gruppe.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        **Berechnung:**
+
+                        $$
+                        \mathrm{PP\ PositionSize}_{G}(t)=
+                        \frac{\mathrm{Position}_{G}(t)\times \mathrm{Price}(t)}
+                        {\mathrm{Traders}_{G}(t)}
+                        $$
+                        """, mathjax=True),
+
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
+                        - **$\mathrm{Position}_{G}(t)$:** Position der betrachteten Gruppe am Reportdatum $t$ (in Kontrakten)
+                        - **$\mathrm{Price}(t)$:** Preis des betrachteten Futures-Marktes am Reportdatum $t$
+                        - **$\mathrm{Traders}_{G}(t)$:** Anzahl Trader der betrachteten Gruppe am Reportdatum $t$
+                        - **Position Size:** durchschnittliche preisgewichtete Positionsgrösse pro Trader innerhalb der betrachteten Gruppe
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.RadioItems(
+            id='ppci-position-size-radio',
+            options=[
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'}
+            ],
+            value='MML',
+            className='mb-4'
+        ),
+
+        dcc.Graph(id='pp-position-size-graph'),
         html.Br(),
     ], width=12)
 ]),
@@ -3193,6 +3488,175 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         yaxis_title=y_title,
         legend=dict(
             title=dict(text='Total Open Interest'),
+            itemsizing='trace',
+            x=1.2,
+            y=0.5,
+            font=dict(size=12)
+        ),
+        margin=dict(l=60, r=160, t=60, b=60),
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# PP Position Size Indicator – Callback
+# Wiederverwendet: _ppci_get_price_col, df_futures_prices, merge_asof,
+# scaled_diameters, Letzter-Punkt-Highlight aus dem PPCI.
+# Bubble-Größe = Anzahl MM-Trader (statt OI), Farbe = Position Size in USD.
+# Position Size ($) = MML/MMS Position Size (Kontrakte/Trader) × Price.
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('pp-position-size-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('ppci-position-size-radio', 'value')]
+)
+def update_pp_position_size(selected_market, start_date, end_date, mm_type):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy()
+
+    if dff.empty:
+        return go.Figure()
+
+    # Normalize Date to tz-naive for merging (identisch zu PPCI)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+
+    # 2nd-Nearby-Preislogik identisch zum PPCI
+    price_col = _ppci_get_price_col(selected_market)
+    y_title = 'Price (2nd Nearby) (Report Date)'
+
+    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
+        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
+        dff = dff.sort_values('_date')
+        dff = pd.merge_asof(
+            dff, prices,
+            left_on='_date', right_on='_pdate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        y_vals = pd.to_numeric(dff[price_col], errors='coerce')
+    else:
+        y_vals = pd.Series([np.nan] * len(dff), index=dff.index)
+        y_title = f'Price (keine Daten für {selected_market})'
+
+    # Position Size in USD = (MML/MMS Position Size in Kontrakten) × Price
+    price_series = y_vals.reset_index(drop=True)
+    dff = dff.reset_index(drop=True)
+
+    if mm_type == 'MML':
+        traders_col    = 'Traders M Money Long'
+        pos_size_contr = pd.to_numeric(dff['MML Position Size'], errors='coerce')
+        colorbar_title = 'Long Position Size ($)'
+        size_legend_title = 'Number of Long Traders'
+    else:
+        traders_col    = 'Traders M Money Short'
+        pos_size_contr = pd.to_numeric(dff['MMS Position Size'], errors='coerce')
+        colorbar_title = 'Short Position Size ($)'
+        size_legend_title = 'Number of Short Traders'
+
+    # Farbwerte: Position Size in USD
+    color_vals = pos_size_contr * price_series
+
+    # Bubble-Größe = Anzahl Trader
+    traders = pd.to_numeric(dff[traders_col], errors='coerce').fillna(0).abs()
+    MIN_PX = 8
+    MAX_PX = 30
+    sizes_traders = scaled_diameters(traders, min_px=MIN_PX, max_px=MAX_PX)
+
+    # Hover-Text
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = [
+        f"Date: {d}<br>Price: {p:.2f}<br>{size_legend_title}: {t:,.0f}<br>{colorbar_title}: {c:,.0f}"
+        for d, p, t, c in zip(
+            dates_str,
+            y_vals.fillna(0),
+            traders.fillna(0),
+            color_vals.fillna(0)
+        )
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=dff['Date'],
+        y=y_vals,
+        mode='markers',
+        marker=dict(
+            size=sizes_traders,
+            sizemode='diameter',
+            sizeref=1,
+            color=color_vals,
+            colorscale='RdYlGn',
+            showscale=True,
+            colorbar=dict(
+                title=colorbar_title,
+                thickness=15,
+                len=0.75,
+                yanchor='middle',
+                y=0.5
+            ),
+        ),
+        text=hover_text,
+        hoverinfo='text',
+        showlegend=False
+    ))
+
+    # Trader-Anzahl-Legende (Bubble-Größen)
+    base = traders[traders > 0]
+    if base.size >= 3:
+        q = [0.10, 0.30, 0.50, 0.70, 0.90]
+        legend_vals = np.unique(np.round(np.quantile(base, q)).astype(int))
+        legend_vals = legend_vals[legend_vals > 0]
+    else:
+        legend_vals = np.array([20, 40, 60, 80, 100], dtype=int)
+
+    legend_sizes = scaled_diameters(legend_vals, min_px=MIN_PX, max_px=MAX_PX)
+
+    for v, s in zip(legend_vals, legend_sizes):
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='markers',
+            marker=dict(
+                size=float(s),
+                sizemode='diameter',
+                sizeref=1,
+                color='gray',
+                opacity=0.6
+            ),
+            showlegend=True,
+            name=f"{int(v):,}",
+            hoverinfo='skip'
+        ))
+
+    # Letzter Datenpunkt hervorheben (identisch zu PPCI)
+    if not dff.empty and not y_vals.empty:
+        fig.add_trace(go.Scatter(
+            x=[dff.iloc[-1]['Date']],
+            y=[y_vals.iloc[-1]],
+            mode='markers',
+            marker=dict(
+                size=10,
+                color='black',
+                opacity=1.0,
+                line=dict(width=4, color='red')
+            ),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+
+    fig.update_layout(
+        title=f'PP Position Size Indicator ({mm_type}) – {selected_market}',
+        xaxis_title='Report Date',
+        yaxis_title=y_title,
+        legend=dict(
+            title=dict(text=size_legend_title),
             itemsizing='trace',
             x=1.2,
             y=0.5,
