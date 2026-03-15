@@ -38,6 +38,24 @@ df_pivoted = table.to_pandas()
 
 print(f"Fetched {len(df_pivoted)} rows from InfluxDB v3")
 
+# Fetch futures prices for PPCI (stored by the pipeline in futures_prices measurement)
+query_futures = """
+SELECT *
+FROM futures_prices
+WHERE time >= now() - INTERVAL '4 years'
+"""
+print("Fetching futures prices from InfluxDB v3...")
+try:
+    table_futures = client.query(query=query_futures, language="sql")
+    df_futures_prices = table_futures.to_pandas()
+    df_futures_prices.rename(columns={'time': 'Date'}, inplace=True)
+    df_futures_prices['Date'] = pd.to_datetime(df_futures_prices['Date']).dt.tz_localize(None)
+    df_futures_prices = df_futures_prices.sort_values('Date').reset_index(drop=True)
+    print(f"[PPCI] Loaded {len(df_futures_prices)} futures price rows")
+except Exception as _e:
+    print(f"[PPCI] Could not load futures prices: {_e}")
+    df_futures_prices = pd.DataFrame(columns=['Date'])
+
 # Close the client
 client.close()
 
@@ -194,6 +212,31 @@ default_end_date = df_pivoted['Date'].max()
 # Define the default start date (6 months prior to the end date)
 default_start_date = default_end_date - timedelta(days=182)
 
+
+# ---------------------------------------------------------------------------
+# PPCI – Positioning Price Concentration Indicator
+# Preisspalten-Mapping: Substring im Market-Namen (UPPERCASE) →
+# Feldname in der futures_prices-Tabelle (continuous contract als
+# 2nd-Nearby-Proxy; yfinance GC=F etc. rollt automatisch).
+# Annahme: kein direkter 2nd-Nearby-Ticker verfügbar – continuous contract
+# liefert einen plausiblen Preis-Proxy für die Y-Achse.
+# ---------------------------------------------------------------------------
+_PPCI_MARKET_TO_COL = {
+    'GOLD':      'gold_close',
+    'SILVER':    'silver_close',
+    'COPPER':    'copper_close',
+    'PLATINUM':  'platinum_close',
+    'PALLADIUM': 'palladium_close',
+}
+
+
+def _ppci_get_price_col(market_name: str):
+    """Gibt den Spaltennamen in df_futures_prices zurück, oder None."""
+    mn = (market_name or '').upper()
+    for key, col in _PPCI_MARKET_TO_COL.items():
+        if key in mn:
+            return col
+    return None
 
 
 def get_global_xaxis():
@@ -1037,6 +1080,120 @@ app.layout = html.Div([
                 dcc.Graph(id='dp-concentration-clustering-graph')
             ], width=12)
         ]),
+
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("Positioning Price Concentration Indicator"),
+
+        dcc.Markdown(r"""
+        Der **Positioning Price Concentration Indicator** misst, wie gross der Anteil der Positionen 
+        einer Tradergruppe am gesamten Markt ist. Dadurch wird sichtbar, wie stark eine Gruppe auf 
+        der Long- oder Short-Seite im Verhältnis zum gesamten Open Interest vertreten ist. Eine hohe 
+        Konzentration deutet darauf hin, dass ein grosser Teil des Marktes von dieser Gruppe gehalten wird.
+
+        Das **Ziel des Indikators** ist es, die Marktbedeutung und Dominanz einer Tradergruppe sichtbar 
+        zu machen. Er zeigt, wie stark die Positionierung einer Gruppe relativ zum Gesamtmarkt ausfällt 
+        und hilft damit, Phasen hoher Konzentration zu erkennen. Dadurch lassen sich Rückschlüsse darauf 
+        ziehen, in welchen Marktphasen einzelne Gruppen besonders stark engagiert sind und wo potenzielle 
+        Risiken durch einen späteren Positionsabbau bestehen könnten.
+
+        **Farbskala:** Die Punktfarbe zeigt die Konzentration der Positionen der jeweiligen Gruppe am 
+        gesamten Open Interest.
+        """, mathjax=True),
+
+        dbc.Row([
+            dbc.Col(dcc.Markdown(r"""
+            **Berechnung:**
+
+            $$
+            \mathrm{PP\ Concentration}_{G}(t)=
+            \frac{\mathrm{Position}_{G}(t)}
+            {\mathrm{OI}(t)} \times 100
+            $$
+            """, mathjax=True), width=12),
+        ], className="mb-2"),
+
+        dcc.Markdown(r"""
+        **Bedeutung der Abkürzungen / Begriffe:**
+        - **MML:** Managed Money Long
+        - **MMS:** Managed Money Short
+        - **OI / Open Interest:** Gesamtzahl aller offenen Kontrakte im Markt
+        - **$\mathrm{Position}_{G}(t)$:** Position der betrachteten Gruppe am Reportdatum $t$, mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
+        - **Concentration:** Anteil der Positionen einer Gruppe am gesamten Markt-OI
+        """, mathjax=True),
+
+        dcc.RadioItems(
+            id='ppci-mm-radio',
+            options=[
+                {'label': 'Long', 'value': 'Long'},
+                {'label': 'Short', 'value': 'Short'}
+            ],
+            value='Long',
+            className='mb-4'
+        ),
+
+        dcc.Graph(id='positioning-price-concentration-graph'),
+        html.Br(),
+    ], width=12)
+]),
+
+        html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("Positioning Price Clustering Indicator"),
+
+        dcc.Markdown(r"""
+        Der **Positioning Price Clustering Indicator** misst, wie gross der Anteil der Trader 
+        einer bestimmten Tradergruppe an allen Long- bzw. Short-Tradern im Markt ist. Dadurch 
+        wird sichtbar, wie breit oder eng eine Positionierung innerhalb einer Gruppe abgestützt ist. 
+        Eine hohe Clustering-Ausprägung bedeutet, dass ein grosser Anteil der Marktteilnehmenden 
+        auf der jeweiligen Marktseite dieser Gruppe zuzuordnen ist.
+
+        Das **Ziel des Indikators** ist es, die Breite der Marktteilnahme einer Tradergruppe sichtbar 
+        zu machen. Er zeigt, ob eine Positionierung von vielen oder nur von wenigen Tradern getragen 
+        wird und macht damit die Struktur der Marktteilnahme transparenter. Dadurch lassen sich Phasen 
+        erkennen, in denen sich Positionierungen innerhalb einer Gruppe besonders stark verdichten oder verbreitern.
+
+        **Farbskala:** Die Punktfarbe zeigt das Clustering der jeweiligen Gruppe.
+        """, mathjax=True),
+
+        dbc.Row([
+            dbc.Col(dcc.Markdown(r"""
+            **Berechnung:**
+
+            $$
+            \mathrm{PP\ Clustering}_{G}(t)=
+            \frac{\mathrm{Traders}_{G}(t)}
+            {\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)} \times 100
+            $$
+            """, mathjax=True), width=12),
+        ], className="mb-2"),
+
+        dcc.Markdown(r"""
+        **Bedeutung der Abkürzungen / Begriffe:**
+        - **MML:** Managed Money Long
+        - **MMS:** Managed Money Short
+        - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
+        - **$\mathrm{Traders}_{G}(t)$:** Anzahl Trader der betrachteten Gruppe am Reportdatum $t$
+        - **$\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)$:** Gesamtzahl aller Trader derselben Marktseite (Long oder Short) am Reportdatum $t$
+        - **Clustering:** Anteil der Trader einer Gruppe an allen Tradern derselben Marktseite
+        """, mathjax=True),
+
+        dcc.RadioItems(
+            id='ppci-clustering-radio',
+            options=[
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'}
+            ],
+            value='MML',
+            className='mb-4'
+        ),
+
+        dcc.Graph(id='pp-clustering-graph'),
+        html.Br(),
+    ], width=12)
+]),
 
         html.Hr(),  # Separator
         dbc.Row([
@@ -2723,6 +2880,330 @@ def update_concentration_clustering_graph(start_date, end_date, selected_indicat
     )
     
     return fig
+
+
+# ---------------------------------------------------------------------------
+# PPCI – Callback
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('positioning-price-concentration-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('ppci-mm-radio', 'value')]
+)
+def update_ppci(selected_market, start_date, end_date, direction):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy()
+
+    if dff.empty:
+        return go.Figure()
+
+    # Normalize Date to tz-naive for merging
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+
+    # Long/Short Concentration (%)
+    total_oi = pd.to_numeric(dff['Open Interest'], errors='coerce').replace(0, np.nan)
+    dff['_long_conc']  = 100.0 * pd.to_numeric(dff['Managed Money Long'],  errors='coerce') / total_oi
+    dff['_short_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Short'], errors='coerce') / total_oi
+
+    if direction == 'Long':
+        color_col      = '_long_conc'
+        colorbar_title = 'Long Concentration (%)'
+    else:
+        color_col      = '_short_conc'
+        colorbar_title = 'Short Concentration (%)'
+
+    # Merge futures prices from InfluxDB (continuous contract proxy for 2nd Nearby)
+    price_col = _ppci_get_price_col(selected_market)
+    y_title = 'Price (2nd Nearby) (Report Date)'
+
+    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
+        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
+        dff = dff.sort_values('_date')
+
+        dff = pd.merge_asof(
+            dff, prices,
+            left_on='_date', right_on='_pdate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        y_vals = pd.to_numeric(dff[price_col], errors='coerce')
+    else:
+        y_vals = pd.Series([np.nan] * len(dff), index=dff.index)
+        y_title = f'Price (keine Daten für {selected_market})'
+
+    # Bubble sizing: Total Open Interest
+    oi = pd.to_numeric(dff['Open Interest'], errors='coerce').fillna(0).abs()
+
+    MIN_PX = 8
+    MAX_PX = 30
+    sizes_oi = scaled_diameters(oi, min_px=MIN_PX, max_px=MAX_PX)
+
+    color_vals = pd.to_numeric(dff[color_col], errors='coerce')
+
+    # Hover-Text
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = [
+        f"Date: {d}<br>Price: {p:.2f}<br>Total Open Interest: {o:,.0f}<br>{colorbar_title}: {c:.1f}%"
+        for d, p, o, c in zip(
+            dates_str,
+            y_vals.fillna(0),
+            oi.fillna(0),
+            color_vals.fillna(0)
+        )
+    ]
+
+    fig = go.Figure()
+
+    # Haupttrace
+    fig.add_trace(go.Scatter(
+        x=dff['Date'],
+        y=y_vals,
+        mode='markers',
+        marker=dict(
+            size=sizes_oi,
+            sizemode='diameter',
+            sizeref=1,
+            color=color_vals,
+            colorscale='RdYlGn',
+            showscale=True,
+            colorbar=dict(
+                title=colorbar_title,
+                thickness=15,
+                len=0.75,
+                yanchor='middle',
+                y=0.5
+            ),
+        ),
+        text=hover_text,
+        hoverinfo='text',
+        showlegend=False
+    ))
+
+    # Bubble-Size-Legende dynamisch
+    base = oi[oi > 0]
+    if base.size >= 3:
+        q = [0.10, 0.30, 0.50, 0.70, 0.90]
+        legend_vals = np.unique(np.round(np.quantile(base, q)).astype(int))
+        legend_vals = legend_vals[legend_vals > 0]
+    else:
+        legend_vals = np.array([50000, 100000, 150000, 200000, 250000], dtype=int)
+
+    legend_sizes = scaled_diameters(legend_vals, min_px=MIN_PX, max_px=MAX_PX)
+
+    for v, s in zip(legend_vals, legend_sizes):
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='markers',
+            marker=dict(
+                size=float(s),
+                sizemode='diameter',
+                sizeref=1,
+                color='gray',
+                opacity=0.6
+            ),
+            showlegend=True,
+            name=f"{int(v):,}",
+            hoverinfo='skip'
+        ))
+
+    # Letzter Datenpunkt hervorheben
+    if not dff.empty and not y_vals.empty:
+        fig.add_trace(go.Scatter(
+            x=[dff.iloc[-1]['Date']],
+            y=[y_vals.iloc[-1]],
+            mode='markers',
+            marker=dict(
+                size=10,
+                color='black',
+                opacity=1.0,
+                line=dict(width=4, color='red')
+            ),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+
+    fig.update_layout(
+        title=f'Positioning Price Concentration Indicator ({direction}) – {selected_market}',
+        xaxis_title='Report Date',
+        yaxis_title=y_title,
+        legend=dict(
+            title=dict(text='Total Open Interest'),
+            itemsizing='trace',
+            x=1.2,
+            y=0.5,
+            font=dict(size=12)
+        ),
+        margin=dict(l=60, r=160, t=60, b=60),
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# PP Clustering Indicator – Callback
+# Wiederverwendet: _ppci_get_price_col, df_futures_prices, merge_asof,
+# scaled_diameters, OI-Legende und Letzter-Punkt-Highlight aus dem PPCI.
+# Unterschied zum PPCI: Farbe = Long/Short Clustering statt Concentration (%).
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('pp-clustering-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('ppci-clustering-radio', 'value')]
+)
+def update_pp_clustering(selected_market, start_date, end_date, mm_type):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy()
+
+    if dff.empty:
+        return go.Figure()
+
+    # Normalize Date to tz-naive for merging (identisch zu PPCI)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+
+    if mm_type == 'MML':
+        color_col      = 'Long Clustering'
+        colorbar_title = 'MML Clustering'
+    else:
+        color_col      = 'Short Clustering'
+        colorbar_title = 'MMS Clustering'
+
+    # 2nd-Nearby-Preislogik identisch zum PPCI
+    price_col = _ppci_get_price_col(selected_market)
+    y_title = 'Price (2nd Nearby) (Report Date)'
+
+    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
+        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
+        dff = dff.sort_values('_date')
+        dff = pd.merge_asof(
+            dff, prices,
+            left_on='_date', right_on='_pdate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        y_vals = pd.to_numeric(dff[price_col], errors='coerce')
+    else:
+        y_vals = pd.Series([np.nan] * len(dff), index=dff.index)
+        y_title = f'Price (keine Daten für {selected_market})'
+
+    # Bubble-Größen (identisch zu PPCI)
+    oi = pd.to_numeric(dff['Open Interest'], errors='coerce').fillna(0).abs()
+    MIN_PX = 8
+    MAX_PX = 30
+    sizes_oi = scaled_diameters(oi, min_px=MIN_PX, max_px=MAX_PX)
+
+    color_vals = pd.to_numeric(dff[color_col], errors='coerce')
+
+    # Hover-Text
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = [
+        f"Date: {d}<br>Price: {p:.2f}<br>Total Open Interest: {o:,.0f}<br>{colorbar_title}: {c:.1f}"
+        for d, p, o, c in zip(
+            dates_str,
+            y_vals.fillna(0),
+            oi.fillna(0),
+            color_vals.fillna(0)
+        )
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=dff['Date'],
+        y=y_vals,
+        mode='markers',
+        marker=dict(
+            size=sizes_oi,
+            sizemode='diameter',
+            sizeref=1,
+            color=color_vals,
+            colorscale='RdYlGn',
+            showscale=True,
+            colorbar=dict(
+                title=colorbar_title,
+                thickness=15,
+                len=0.75,
+                yanchor='middle',
+                y=0.5
+            ),
+        ),
+        text=hover_text,
+        hoverinfo='text',
+        showlegend=False
+    ))
+
+    # OI-Bubble-Größen-Legende (identisch zu PPCI)
+    base = oi[oi > 0]
+    if base.size >= 3:
+        q = [0.10, 0.30, 0.50, 0.70, 0.90]
+        legend_vals = np.unique(np.round(np.quantile(base, q)).astype(int))
+        legend_vals = legend_vals[legend_vals > 0]
+    else:
+        legend_vals = np.array([50000, 100000, 150000, 200000, 250000], dtype=int)
+
+    legend_sizes = scaled_diameters(legend_vals, min_px=MIN_PX, max_px=MAX_PX)
+
+    for v, s in zip(legend_vals, legend_sizes):
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='markers',
+            marker=dict(
+                size=float(s),
+                sizemode='diameter',
+                sizeref=1,
+                color='gray',
+                opacity=0.6
+            ),
+            showlegend=True,
+            name=f"{int(v):,}",
+            hoverinfo='skip'
+        ))
+
+    # Letzter Datenpunkt hervorheben (identisch zu PPCI)
+    if not dff.empty and not y_vals.empty:
+        fig.add_trace(go.Scatter(
+            x=[dff.iloc[-1]['Date']],
+            y=[y_vals.iloc[-1]],
+            mode='markers',
+            marker=dict(
+                size=10,
+                color='black',
+                opacity=1.0,
+                line=dict(width=4, color='red')
+            ),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+
+    fig.update_layout(
+        title=f'PP Clustering Indicator ({mm_type}) – {selected_market}',
+        xaxis_title='Report Date',
+        yaxis_title=y_title,
+        legend=dict(
+            title=dict(text='Total Open Interest'),
+            itemsizing='trace',
+            x=1.2,
+            y=0.5,
+            font=dict(size=12)
+        ),
+        margin=dict(l=60, r=160, t=60, b=60),
+        height=600,
+    )
+
+    return fig
+
 
 # Open browser automatically
 if __name__ == '__main__':
