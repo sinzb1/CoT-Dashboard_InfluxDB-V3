@@ -56,6 +56,24 @@ except Exception as _e:
     print(f"[PPCI] Could not load futures prices: {_e}")
     df_futures_prices = pd.DataFrame(columns=['Date'])
 
+# Fetch FRED macro data (VIX, USD Index etc.) – stored by pipeline in macro_by_date
+query_macro = """
+SELECT *
+FROM macro_by_date
+WHERE time >= now() - INTERVAL '4 years'
+"""
+print("Fetching macro data (FRED) from InfluxDB v3...")
+try:
+    table_macro = client.query(query=query_macro, language="sql")
+    df_macro = table_macro.to_pandas()
+    df_macro.rename(columns={'time': 'Date'}, inplace=True)
+    df_macro['Date'] = pd.to_datetime(df_macro['Date']).dt.tz_localize(None)
+    df_macro = df_macro.sort_values('Date').reset_index(drop=True)
+    print(f"[FRED] Loaded {len(df_macro)} macro rows")
+except Exception as _e:
+    print(f"[FRED] Could not load macro data: {_e}")
+    df_macro = pd.DataFrame(columns=['Date'])
+
 # Close the client
 client.close()
 
@@ -858,6 +876,250 @@ dbc.Row([
         ),
 
         dcc.Graph(id='dp-notional-indicator-graph'),
+        html.Br(),
+    ], width=12)
+]),
+
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Time Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Dry Powder Time Indicator** zeigt, wie sich die Long- bzw. Short-Konzentration 
+                        einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl Trader über die Zeit entwickelt. 
+                        Dadurch wird sichtbar, wie stark eine Gruppe relativ zum gesamten Markt positioniert ist und 
+                        wie sich diese Positionierung im historischen Verlauf verändert.
+
+                        Das **Ziel des Indikators** ist es, die zeitliche Entwicklung der Marktpositionierung einer 
+                        Tradergruppe sichtbar zu machen. Er hilft zu beurteilen, ob sich Konzentrationsmuster in Phasen 
+                        mit vielen oder wenigen Tradern wiederholen und wie sich die aktuelle Positionierung im Vergleich 
+                        zu früheren Jahren einordnen lässt. Dadurch lassen sich historische Muster, Verschiebungen in der 
+                        Marktstruktur und mögliche Extremphasen erkennen.
+
+                        **Farbskala:** Die Punktfarbe codiert das jeweilige Jahr der Beobachtung. Dadurch wird sichtbar, 
+                        aus welcher Zeitperiode ein Punkt stammt und wie sich die Positionierung über die Jahre entwickelt.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für Managed Money Long (MML):**
+
+                            $$
+                            \mathrm{DP\ Time}_{\mathrm{MML}}=
+                            \frac{\mathrm{Open\ Interest}_{\mathrm{MML}}}
+                            {\mathrm{Total\ Open\ Interest}} \cdot 100
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für Managed Money Short (MMS):**
+
+                            $$
+                            \mathrm{DP\ Time}_{\mathrm{MMS}}=
+                            -\,\frac{\mathrm{Open\ Interest}_{\mathrm{MMS}}}
+                            {\mathrm{Total\ Open\ Interest}} \cdot 100
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+                        ], className="mb-2"),
+
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **$\mathrm{Open\ Interest}_{\mathrm{MML}}$:** Open Interest der Managed-Money-Long-Positionen
+                        - **$\mathrm{Open\ Interest}_{\mathrm{MMS}}$:** Open Interest der Managed-Money-Short-Positionen
+                        - **Total Open Interest:** gesamtes Open Interest des betrachteten Futures-Marktes
+                        - **Negatives Vorzeichen bei MMS:** dient der separaten Darstellung der Short-Seite im Plot
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.Graph(id='dp-time-indicator-graph'),
+        html.Br(),
+    ], width=12)
+]),
+
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Price Indicator"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Dry Powder Price Indicator** zeigt, wie sich das Long- bzw. Short-Open Interest 
+                        einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl Trader und dem zugrunde 
+                        liegenden Preisniveau verteilt. Dadurch wird sichtbar, bei welchen Preisniveaus eine 
+                        Gruppe besonders stark oder schwach positioniert ist und wie sich diese Positionierung 
+                        im Verhältnis zur Zahl der beteiligten Trader verändert.
+
+                        Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang 
+                        mit dem Marktpreis sichtbar zu machen. Er hilft zu beurteilen, ob hohe oder tiefe Long- 
+                        bzw. Short-Positionierungen eher bei bestimmten Preisniveaus auftreten und ob diese von 
+                        vielen oder wenigen Tradern getragen werden. Dadurch lassen sich typische Preisbereiche 
+                        identifizieren, in denen eine Gruppe besonders aktiv ist.
+
+                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Preisniveau des Continuous Front-Monts Features 
+                        (2nd nearby). Helle Farben stehen für tiefere Preise, dunklere Farben für höhere Preise.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für die Long-Seite:**
+
+                            $$
+                            \mathrm{DP\ Price}_{G}(t)=\mathrm{Open\ Interest}_{G}(t)
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für die Short-Seite:**
+
+                            $$
+                            \mathrm{DP\ Price}_{G}(t)=\mathrm{Open\ Interest}_{G}(t)
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+                        ], className="mb-2"),
+
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **$G$:** betrachtete Tradergruppe auf der gewählten Marktseite, $\mathrm{PMPUL}$ oder $\mathrm{PMPUS}$
+                        - **$\mathrm{Open\ Interest}_{G}(t)$:** Open Interest der betrachteten Gruppe $G$ zum Zeitpunkt $t$
+                        - **x-Achse:** Anzahl Trader der betrachteten Gruppe
+                        - **y-Achse:** Open Interest der betrachteten Gruppe
+                        - **Punktfarbe:** Preisniveau des Continuous Front-Monts Features zum Zeitpunkt $t$
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.RadioItems(
+            id='dp-price-radio',
+            options=[
+                {'label': 'PMPU Long',  'value': 'PMPUL'},
+                {'label': 'PMPU Short', 'value': 'PMPUS'},
+            ],
+            value='PMPUL',
+            className='mb-4'
+        ),
+        dcc.Graph(id='dp-price-indicator-graph'),
+        html.Br(),
+    ], width=12)
+]),
+
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Factor (VIX)"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Dry Powder Factor (VIX) Indicator** zeigt, wie sich das Long- bzw. 
+                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl 
+                        Trader und einem externen Risikofaktor verteilt. Als externer Faktor wird der 
+                        **Volatility Index (VIX)** verwendet, der die vom Markt erwartete Schwankungsintensität 
+                        des S&P 500 für die nächsten 30 Tage abbildet. Dadurch wird sichtbar, ob eine Tradergruppe 
+                        ihre Positionen eher in Phasen tiefer oder hoher erwarteter Marktvolatilität aufbaut.
+
+                        Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang 
+                        mit dem allgemeinen Marktunsicherheitsniveau sichtbar zu machen. Er hilft zu beurteilen, 
+                        ob hohe oder tiefe Long- bzw. Short-Positionierungen eher in Phasen erhöhter oder reduzierter 
+                        Risikoaversion auftreten und ob diese von vielen oder wenigen Tradern getragen werden. Dadurch 
+                        lassen sich mögliche Zusammenhänge zwischen externer Marktunsicherheit und der Positionierung 
+                        im jeweiligen Rohstoffmarkt erkennen.
+
+                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Niveau des VIX. Helle Farben stehen für 
+                        eine tiefere erwartete Volatilität, dunkelrote Farben für eine höhere erwartete Volatilität.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für Managed Money Long (MML):**
+
+                            $$
+                            \mathrm{DP\ Factor\ (VIX)}_{\mathrm{MML}}=
+                            \mathrm{Open\ Interest}_{\mathrm{MML}}
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für Managed Money Short (MMS):**
+
+                            $$
+                            \mathrm{DP\ Factor\ (VIX)}_{\mathrm{MMS}}=
+                            \mathrm{Open\ Interest}_{\mathrm{MMS}}
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+                        ], className="mb-2"),
+
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **$\mathrm{Open\ Interest}_{\mathrm{MML}}$:** Open Interest der Managed-Money-Long-Positionen
+                        - **$\mathrm{Open\ Interest}_{\mathrm{MMS}}$:** Open Interest der Managed-Money-Short-Positionen
+                        - **x-Achse:** Anzahl Trader der betrachteten Gruppe
+                        - **y-Achse:** Open Interest der betrachteten Gruppe
+                        - **Punktfarbe:** Niveau des VIX zum Zeitpunkt $t$
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.RadioItems(
+            id='dp-vix-radio',
+            options=[
+                {'label': 'MM Long',  'value': 'MML'},
+                {'label': 'MM Short', 'value': 'MMS'},
+            ],
+            value='MML',
+            className='mb-4'
+        ),
+        dcc.Graph(id='dp-vix-indicator-graph'),
         html.Br(),
     ], width=12)
 ]),
@@ -3295,7 +3557,7 @@ def update_ppci(selected_market, start_date, end_date, direction):
 
     # Merge futures prices from InfluxDB (continuous contract proxy for 2nd Nearby)
     price_col = _ppci_get_price_col(selected_market)
-    y_title = 'Price (2nd Nearby) (Report Date)'
+    y_title = 'Price (Continuous Front-Month Proxy) (Report Date)'
 
     if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
         prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
@@ -3457,7 +3719,7 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
 
     # 2nd-Nearby-Preislogik identisch zum PPCI
     price_col = _ppci_get_price_col(selected_market)
-    y_title = 'Price (2nd Nearby) (Report Date)'
+    y_title = 'Price (Continuous Front-Month Proxy) (Report Date)'
 
     if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
         prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
@@ -3610,7 +3872,7 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
 
     # 2nd-Nearby-Preislogik identisch zum PPCI
     price_col = _ppci_get_price_col(selected_market)
-    y_title = 'Price (2nd Nearby) (Report Date)'
+    y_title = 'Price (Continuous Front-Month Proxy) (Report Date)'
 
     if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
         prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
@@ -3893,6 +4155,396 @@ def update_dp_notional(selected_market, start_date, end_date):
         ),
         plot_bgcolor='white',
         legend_title='Trader Group',
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# DP Time Indicator – Callback
+# X = Number of Traders (MML / MMS), Y = Long / Short Concentration (%)
+# Farbe = Year (wie DP Net Indicators: separate Trace pro Jahr)
+# MML: Kreise (oberhalb 0), MMS: Dreiecke (unterhalb 0)
+# Konzentration: 100 * MM Long|Short OI / Total OI  (MMS negativ)
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('dp-time-indicator-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date')]
+)
+def update_dp_time(selected_market, start_date, end_date):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy().reset_index(drop=True)
+
+    if dff.empty:
+        return go.Figure()
+
+    # Konzentration (%) – identisch zum PPCI-Callback
+    total_oi = pd.to_numeric(dff['Open Interest'], errors='coerce').replace(0, np.nan)
+    dff['_y_mml'] =  100.0 * pd.to_numeric(dff['Managed Money Long'],  errors='coerce') / total_oi
+    dff['_y_mms'] = -100.0 * pd.to_numeric(dff['Managed Money Short'], errors='coerce') / total_oi
+
+    x_mml = pd.to_numeric(dff['MML Traders'], errors='coerce')
+    x_mms = pd.to_numeric(dff['MMS Traders'], errors='coerce')
+
+    fig = go.Figure()
+
+    # Dummy-Traces für Shape-Legende (MML / MMS)
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None], mode='markers',
+        marker=dict(symbol='circle', color='gray', size=9),
+        name='MML', legendgroup='shape_mml'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None], mode='markers',
+        marker=dict(symbol='triangle-down', color='gray', size=9),
+        name='MMS', legendgroup='shape_mms'
+    ))
+
+    # Scatter-Traces: pro Jahr eine Farbe, MML=Kreis / MMS=Dreieck
+    for year in sorted(dff['Year'].unique()):
+        mask = dff['Year'] == year
+
+        fig.add_trace(go.Scatter(
+            x=x_mml[mask], y=dff['_y_mml'][mask],
+            mode='markers',
+            marker=dict(symbol='circle', size=12, opacity=0.75),
+            name=str(year), legendgroup=str(year), showlegend=True,
+            hovertemplate=(
+                f'Year: {year}<br>'
+                'Traders: %{x}<br>'
+                'Long Conc.: %{y:.1f}%'
+                '<extra>MML</extra>'
+            )
+        ))
+        fig.add_trace(go.Scatter(
+            x=x_mms[mask], y=dff['_y_mms'][mask],
+            mode='markers',
+            marker=dict(symbol='triangle-down', size=12, opacity=0.75),
+            name=str(year), legendgroup=str(year), showlegend=False,
+            hovertemplate=(
+                f'Year: {year}<br>'
+                'Traders: %{x}<br>'
+                'Short Conc.: %{y:.1f}%'
+                '<extra>MMS</extra>'
+            )
+        ))
+
+    # Trendlinien (analog zu DP Notional: weißer Untergrund + Farblinie)
+    x_all = pd.concat([x_mml, x_mms]).dropna()
+    if not x_all.empty:
+        xs = np.array([float(x_all.min()), float(x_all.max())])
+
+        def _add_time_trend(xs_arr, x_s, y_s, color, label):
+            mask_t = x_s.notna() & y_s.notna()
+            xv = x_s[mask_t].astype(float).values
+            yv = y_s[mask_t].astype(float).values
+            if len(xv) < 2:
+                return
+            m, b = np.polyfit(xv, yv, 1)
+            ys = m * xs_arr + b
+            fig.add_trace(go.Scatter(
+                x=xs_arr, y=ys, mode='lines',
+                line=dict(color='white', width=7),
+                showlegend=False, hoverinfo='skip'
+            ))
+            fig.add_trace(go.Scatter(
+                x=xs_arr, y=ys, mode='lines',
+                line=dict(color=color, width=3),
+                name=label, showlegend=True
+            ))
+
+        _add_time_trend(xs, x_mml, dff['_y_mml'], '#2c7fb8', 'MML Trend')
+        _add_time_trend(xs, x_mms, dff['_y_mms'], '#7fcdbb', 'MMS Trend')
+
+    # Most Recent Week (identisch zu DP Notional)
+    desired_max_px = 18
+    fig.add_trace(go.Scatter(
+        x=[x_mml.iloc[-1]], y=[dff['_y_mml'].iloc[-1]],
+        mode='markers',
+        marker=dict(size=desired_max_px, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week', legendgroup='recent', showlegend=True
+    ))
+    fig.add_trace(go.Scatter(
+        x=[x_mms.iloc[-1]], y=[dff['_y_mms'].iloc[-1]],
+        mode='markers',
+        marker=dict(size=desired_max_px, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week', legendgroup='recent', showlegend=False
+    ))
+
+    fig.update_layout(
+        title='Dry Powder Time Indicator',
+        xaxis=dict(
+            title='Number of Traders',
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        yaxis=dict(
+            title='Long and Short Concentration (%)',
+            showgrid=True, gridcolor='LightGray', gridwidth=2,
+            zeroline=True, zerolinecolor='black', zerolinewidth=1
+        ),
+        plot_bgcolor='white',
+        legend_title='Year',
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# DP Price Indicator – Callback
+# X = PMPU Long/Short Traders, Y = PMPU Long/Short OI
+# Punktfarbe = Futures-Preis (Continuous Front-Month Proxy, Report Date)
+# Trendlinie + Most-Recent-Week-Marker identisch zu DP Notional/Time Indicator
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('dp-price-indicator-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('dp-price-radio', 'value')]
+)
+def update_dp_price(selected_market, start_date, end_date, pmpu_side):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy().reset_index(drop=True)
+
+    if dff.empty:
+        return go.Figure()
+
+    if pmpu_side == 'PMPUL':
+        x_col    = 'PMPUL Traders'
+        y_col    = 'Producer/Merchant/Processor/User Long'
+        x_title  = 'PMPU Number of Long Traders'
+        y_title  = 'PMPU Long OI (Contracts)'
+        pt_title = 'Dry Powder Price Indicator (PMPU Long)'
+    else:
+        x_col    = 'PMPUS Traders'
+        y_col    = 'Producer/Merchant/Processor/User Short'
+        x_title  = 'PMPU Number of Short Traders'
+        y_title  = 'PMPU Short OI (Contracts)'
+        pt_title = 'Dry Powder Price Indicator (PMPU Short)'
+
+    x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+    y_vals = pd.to_numeric(dff[y_col], errors='coerce')
+
+    # Futures-Preis als Farbe (identisch zu PPCI: merge_asof, 7-Tage-Toleranz)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+    price_col = _ppci_get_price_col(selected_market)
+
+    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
+        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
+        dff = dff.sort_values('_date').reset_index(drop=True)
+        x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+        y_vals = pd.to_numeric(dff[y_col], errors='coerce')
+        dff = pd.merge_asof(
+            dff, prices,
+            left_on='_date', right_on='_pdate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        color_vals    = pd.to_numeric(dff[price_col], errors='coerce')
+        colorbar_title = 'Price (USD)'
+    else:
+        color_vals    = pd.Series([np.nan] * len(dff), index=dff.index)
+        colorbar_title = 'Price (n/a)'
+
+    # Hover
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = [
+        f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}<br>Price: {c:.2f}'
+        for d, x, y, c in zip(
+            dates_str,
+            x_vals.fillna(0),
+            y_vals.fillna(0),
+            color_vals.fillna(0)
+        )
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=x_vals, y=y_vals,
+        mode='markers',
+        marker=dict(
+            size=14,
+            color=color_vals,
+            colorscale='RdYlGn',
+            showscale=True,
+            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
+            opacity=0.85,
+            line=dict(width=0.6, color='black')
+        ),
+        text=hover_text,
+        hoverinfo='text',
+        showlegend=False
+    ))
+
+    # Most Recent Week (identisch zu DP Notional/Time)
+    fig.add_trace(go.Scatter(
+        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
+        mode='markers',
+        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week'
+    ))
+
+    fig.update_layout(
+        title=pt_title,
+        xaxis=dict(
+            title=x_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        yaxis=dict(
+            title=y_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        plot_bgcolor='white',
+        legend_title='Legend',
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# DP Factor (VIX) – Callback
+# X = MM Long/Short Traders, Y = MM Long/Short OI
+# Punktfarbe = VIX-Wert (FRED via macro_by_date), merge_asof 7-Tage-Toleranz
+# Struktur identisch zu DP Price Indicator (ohne Trendlinie)
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('dp-vix-indicator-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('dp-vix-radio', 'value')]
+)
+def update_dp_vix(selected_market, start_date, end_date, mm_side):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy().reset_index(drop=True)
+
+    if dff.empty:
+        return go.Figure()
+
+    if mm_side == 'MML':
+        x_col   = 'MML Traders'
+        y_col   = 'MML Long OI'
+        x_title = 'MM Number of Long Traders'
+        y_title = 'MM Long OI (Contracts)'
+        title   = 'Dry Powder Factor – VIX (MM Long)'
+    else:
+        x_col   = 'MMS Traders'
+        y_col   = 'MMS Short OI'
+        x_title = 'MM Number of Short Traders'
+        y_title = 'MM Short OI (Contracts)'
+        title   = 'Dry Powder Factor – VIX (MM Short)'
+
+    x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+    y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+
+    # VIX-Wert als Farbe (FRED via df_macro, merge_asof identisch zu df_futures_prices)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+
+    if not df_macro.empty and 'vix' in df_macro.columns:
+        vix_df = df_macro[['Date', 'vix']].dropna(subset=['vix']).copy()
+        vix_df = vix_df.rename(columns={'Date': '_vdate'}).sort_values('_vdate')
+        dff = dff.sort_values('_date').reset_index(drop=True)
+        x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+        y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+        dff = pd.merge_asof(
+            dff, vix_df,
+            left_on='_date', right_on='_vdate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        color_vals     = pd.to_numeric(dff['vix'], errors='coerce')
+        colorbar_title = 'VIX'
+    else:
+        color_vals     = pd.Series([np.nan] * len(dff), index=dff.index)
+        colorbar_title = 'VIX (n/a)'
+
+    # Hover
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = [
+        f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}<br>VIX: {c:.1f}'
+        for d, x, y, c in zip(
+            dates_str,
+            x_vals.fillna(0),
+            y_vals.fillna(0),
+            color_vals.fillna(0)
+        )
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=x_vals, y=y_vals,
+        mode='markers',
+        marker=dict(
+            size=14,
+            color=color_vals,
+            colorscale='RdYlGn_r',   # hoher VIX = rot (Stress), tiefer VIX = grün
+            showscale=True,
+            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
+            opacity=0.85,
+            line=dict(width=0.6, color='black')
+        ),
+        text=hover_text,
+        hoverinfo='text',
+        showlegend=False
+    ))
+
+    # Trendlinie (identisch zu DP Notional: weißer Untergrund + Farblinie)
+    mask_t = x_vals.notna() & y_vals.notna()
+    if mask_t.sum() >= 2:
+        xv = x_vals[mask_t].astype(float).values
+        yv = y_vals[mask_t].astype(float).values
+        xs = np.array([xv.min(), xv.max()])
+        m, b = np.polyfit(xv, yv, 1)
+        ys = m * xs + b
+        col = '#2c7fb8' if mm_side == 'MML' else '#7fcdbb'
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color='white', width=7),
+            showlegend=False, hoverinfo='skip'
+        ))
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color=col, width=3),
+            name='Trend', showlegend=True
+        ))
+
+    # Most Recent Week (identisch zu DP Price Indicator)
+    fig.add_trace(go.Scatter(
+        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
+        mode='markers',
+        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week'
+    ))
+
+    fig.update_layout(
+        title=title,
+        xaxis=dict(
+            title=x_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        yaxis=dict(
+            title=y_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        plot_bgcolor='white',
+        legend_title='Legend',
         height=600,
     )
 

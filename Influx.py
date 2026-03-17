@@ -3,10 +3,9 @@ import pandas as pd
 from influxdb_client_3 import InfluxDBClient3, Point
 from datetime import date, datetime, timezone
 
-from src.clients.fredapi_client import FredClient
-from src.services.fred_api_data_service import FredMacroService
 from src.services.trades_category_service import TradesCategoryService
 from src.services.futures_price_service import FuturesPriceService
+from src.services.macro_price_service import MacroPriceService
 
 # ── Configuration ────────────────────────────────────────────────────────────
 with open("config/config.json") as _f:
@@ -123,20 +122,20 @@ if cot_points:
 
 print("CoT data write completed.")
 
-# ── 2. FRED Macro Data (aligned to CoT dates) ───────────────────────────────
-fred_service = FredMacroService()
-fred_df = fred_service.load_dataframe(cot_dates=cot_dates)
+# ── 2. Macro Data via yfinance (VIX, USD Index, USD/CHF) ────────────────────
+macro_service = MacroPriceService()
+macro_df = macro_service.load_aligned(cot_dates=cot_dates)
 
-print(f"\n{len(fred_df)} FRED data points aligned to CoT dates.")
+print(f"\n{len(macro_df)} macro data points aligned to CoT dates.")
 
 # Targeted delete: remove old macro data (including legacy >4yr data)
 delete_measurement_range(client, "macro_by_date", delete_start, window_end)
 
-print(f"Writing {len(fred_df)} macro data points to InfluxDB v3...")
+print(f"Writing {len(macro_df)} macro data points to InfluxDB v3...")
 
 points = []
 
-for index, row in fred_df.iterrows():
+for index, row in macro_df.iterrows():
     try:
         p = Point("macro_by_date").time(row["date"].to_pydatetime())
 
@@ -160,6 +159,8 @@ if points:
         print(f"Successfully wrote {len(points)} macro data points.")
     except Exception as e:
         print(f"Error writing macro data batch: {e}")
+
+print("Macro data write completed.")
 
 # ── 3. Futures Price Data (aligned to CoT dates) ────────────────────────────
 futures_service = FuturesPriceService()
